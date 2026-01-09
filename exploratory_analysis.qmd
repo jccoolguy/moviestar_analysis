@@ -11,6 +11,7 @@ editor: visual
 library(qs)
 library(tidyverse)
 library(ggrepel)
+library(priceR)
 ```
 
 # Loading Data
@@ -81,3 +82,74 @@ movies_2020 |>
 We see that there are a few outlier films that are over the 50 million dollar budget mark. This is in vast contrast to previous years, the last year with an average budget of 50 million was 1995.
 
 This obvious outlier year will demand some special attention.
+
+## Profitability
+
+A simplistic measure of the profitability of a movie is its revenue minus 2.5\*budget. Let's see how this has changed for the top 50 highest budget movies overtime.
+
+```{r}
+movie_df <- movie_df |> 
+  mutate(profitability = revenue - 2.5*budget)
+```
+
+```{r}
+movie_df |>
+  group_by(year) |> 
+  ggplot(aes(x = year, y = profitability, group = year)) +
+  geom_boxplot()
+```
+
+Profitability is pretty stable overtime, from 2000 to 2019 we start to see more high earning outliers. In 2020 and the following years we see profitability drop with more movies having large losses.
+
+Since the axes are being stretched by outliers I'll take a look at the plot for median profitability.
+
+```{r}
+movie_df |> 
+  group_by(year) |>
+  summarise(med_profit = median(profitability)) |> 
+  ggplot(aes(x = year, y = med_profit)) +
+  geom_line()
+```
+
+We can more clearly see the trend revealed in the previous plot, profits by our measure expanded from 2000 to 2019 and dropped dramatically after the pandemic year of 2020.
+
+## IP share of top budgeted movies over time
+
+```{r}
+movie_df <- movie_df |>
+  mutate(established_ip = !is.na(collection_name))
+```
+
+```{r}
+movie_df |> 
+  group_by(year) |> 
+  summarise(established_ip_percent = mean(established_ip)) |> 
+  ggplot(aes(x = year, y = established_ip_percent)) +
+  geom_line()
+```
+
+For the top fifty budgeted movies in each year its clear that established IP is taking up a larger share than before.
+
+Let's see the budgets of established IP versus independent movies. A complication we will run into is inflation, so let's first create versions of budget and revenue that are adjusted to 1980 dollars.
+
+```{r}
+movie_df$revenue_2023_dollars <- 
+  adjust_for_inflation(movie_df$revenue,
+                       from_date = movie_df$year,
+                       to_date = 2023,
+                       country = "US")
+```
+
+```{r}
+movie_df$budget_2023_dollars <- 
+  adjust_for_inflation(movie_df$budget,
+                       from_date = movie_df$year,
+                       to_date = 2023,
+                       country = "US")
+```
+
+```{r}
+movie_df |> 
+  ggplot(aes(x = year, y = budget_2023_dollars)) +
+  geom_point()
+```
