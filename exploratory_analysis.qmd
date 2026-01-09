@@ -1,0 +1,83 @@
+---
+title: "exploratory analysis"
+author: "Jack Cunningham"
+format: html
+editor: visual
+---
+
+# Libraries
+
+```{r}
+library(qs)
+library(tidyverse)
+library(ggrepel)
+```
+
+# Loading Data
+
+```{r}
+data <- qread("tmdb_top50_budget_movies.qs")
+```
+
+```{r}
+movie_df <- data$movies
+head(movie_df)
+```
+
+# Movie Dataset
+
+## Missing Values
+
+```{r}
+colSums(is.na(movie_df))
+```
+
+Only missing values are contained in the collection_id and collection_name columns. This makes sense, they are simply movies that aren't associated with a franchise. For the time being I will leave this as is.
+
+## How many movies by year?
+
+I'd like to check the number of movies I've successfully pulled by year.
+
+```{r}
+movies_by_year <- movie_df |> 
+  group_by(year) |> 
+  summarise(n = n(), avg_budget = mean(budget), 
+            lower_20 = quantile(budget,.2), upper_20 = quantile(budget,.8))
+movies_by_year |> 
+  ggplot(aes(x = year, y = n)) +
+  geom_col()
+```
+
+That's perfect, we have 50 movies for each year which is what we want.
+
+## Budget by Year
+
+```{r}
+movies_by_year |> 
+  ggplot(aes(x = year, y = avg_budget)) +
+  geom_line()
+```
+
+There is a mostly steady increase in budget with the exception of the 2020 COVID year, lets take a look at that year.
+
+## 2020 analysis
+
+```{r}
+movies_2020 <- movie_df |> 
+  filter(year == 2020)
+head(movies_2020)
+```
+
+```{r}
+movies_2020 |> 
+  ggplot(aes(x = year, y = budget)) +
+  geom_boxplot() +
+  geom_jitter(width = .15, alpha = .5) +
+  geom_text_repel(data = movies_2020 |> filter(budget > 100000000),
+                  aes(label = title),
+                  size = 3)
+```
+
+We see that there are a few outlier films that are over the 50 million dollar budget mark. This is in vast contrast to previous years, the last year with an average budget of 50 million was 1995.
+
+This obvious outlier year will demand some special attention.
