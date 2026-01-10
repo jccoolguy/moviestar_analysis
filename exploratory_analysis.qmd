@@ -204,3 +204,41 @@ cast |>
 We see the usual suspects.
 
 A complication we will run into is if the actor is a "star" at the time of the release of each movie.
+
+## Lead Actors
+
+Let's take a look at the leading role frequency for each actor.
+
+```{r}
+cast |> 
+  group_by(actor_name) |> 
+  summarise(num_movies = n(), num_leading = sum(billing_order == 0),
+            lead_freq = num_leading/num_movies) |> 
+  arrange(desc(num_leading))
+```
+
+## How to define stardom?
+
+I define stardom as being the lead actor of a top ten budgeted film that had a profitable box office three times in the preceding five years.
+
+# Star Table
+
+Getting the leads
+
+```{r}
+leads <- cast |> 
+  filter(billing_order == 0)
+head(leads)
+```
+
+```{r}
+stars <- movie_df |> 
+  group_by(year) |> 
+  slice_max(budget, n = 10) |> 
+  filter(profitability > 0) |> 
+  ungroup() |> 
+  left_join(leads, by = "movie_id")
+head(stars)
+```
+
+It seems we have a problem with missing actors from movies, will need to investigate.
