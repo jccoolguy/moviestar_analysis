@@ -1,0 +1,77 @@
+---
+title: "exploratory star and cast analysis"
+format: html
+editor: visual
+---
+
+```{r}
+library(qs)
+library(tidyverse)
+library(ggrepel)
+library(priceR)
+```
+
+# Loading Data
+
+```{r}
+data <- qread("tmdb_top50_budget_movies.qs")
+cast <- qread("cast_correceted.qs")
+movie_df <- qread("movie_df.qs")
+```
+
+Cast table:
+
+```{r}
+cast_df <- cast$cast_corrected
+head(cast_df)
+```
+
+Movie table:
+
+```{r}
+head(movie_df)
+```
+
+## How to define stardom?
+
+I define stardom as being the lead actor of a top ten budgeted film that had a profitable box office three times in the preceding five years.
+
+# Star Table
+
+Getting the leads
+
+```{r}
+leads <- cast_df |> 
+  filter(billing_order == 0)
+head(leads);dim(leads)
+```
+
+Any missing data now?
+
+```{r}
+colSums(is.na(leads))
+```
+
+I want to investigate this lead table a little bit before moving forward, particularly I'm curious how often an actor leads a movie to see if the way we are defining a star makes sense. Before doing that I want to carry the movie details onto the leads table.
+
+```{r}
+
+```
+
+```{r}
+top_stars <- leads |> 
+  group_by(actor_name) |> 
+  summarise(num_movies = n()) |> 
+  slice_max(num_movies,n = 20) |> 
+  pull(actor_name)
+head(top_stars)
+```
+
+```{r}
+leads |> 
+  filter(actor_name %in% top_stars) |> 
+  group_by(actor_name,year) |> 
+  summarise(n = n()) |> 
+  ggplot(aes(x = year, y = n, col = actor_name)) +
+  geom_line()
+```

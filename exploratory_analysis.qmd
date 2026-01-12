@@ -18,6 +18,7 @@ library(priceR)
 
 ```{r}
 data <- qread("tmdb_top50_budget_movies.qs")
+cast <- qread("cast_correceted.qs")
 ```
 
 ```{r}
@@ -184,6 +185,13 @@ summary(budget_ip)
 ```
 
 The difference is statically significant.
+
+Since we have made changes to the movie table I resave it down.
+
+```{r}
+qsave(movie_df,
+      file = "movie_df.qs")
+```
 
 # Cast
 
