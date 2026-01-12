@@ -242,3 +242,49 @@ head(stars)
 ```
 
 It seems we have a problem with missing actors from movies, will need to investigate.
+
+## Missing Cast Info
+
+```{r}
+cast_track <- cast |> 
+  group_by(movie_id) |> 
+  summarise(n = n())
+head(cast_track)
+dim(cast_track)
+```
+
+```{r}
+cast_track |> 
+  ggplot(aes(x = n)) +
+  geom_bar()
+```
+
+Any NAs?
+
+```{r}
+colSums(is.na(cast))
+```
+
+```{r}
+cast |> 
+  group_by(billing_order) |> 
+  summarise(n = n()) |> 
+  ggplot(aes(x = billing_order)) + 
+  geom_bar()
+```
+
+# Stars missing analysis
+
+```{r}
+stars <- stars |> 
+  mutate(missing = is.na(actor_id))
+head(stars$missing)
+```
+
+```{r}
+stars |> 
+  group_by(year) |> 
+  summarise(missing_num = sum(missing)) |> 
+  ggplot(aes(x = year, y = missing_num)) +
+  geom_line()
+```
