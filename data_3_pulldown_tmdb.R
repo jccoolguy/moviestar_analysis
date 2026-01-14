@@ -35,7 +35,7 @@ get_seed_movies <- function(year, pages = 5) {
   })
 }
 
-years <- 1980:2023
+years <- 1975:2024
 seed_movies <- map_dfr(years, get_seed_movies)
 
 #Pulling Movie Details

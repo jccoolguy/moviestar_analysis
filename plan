@@ -2,6 +2,8 @@ Get Twenty Biggest Movie Stars of each year
   How to define what makes a movie star "big"
   
 Notes:
-We have a lot of "NA" movie stars in 1980 that are actually stars, can I work to fix that?
-When we calculate the movie star power we are getting NAs for about 125 rows
-How to deal with COVID year
+We have a lot of "NA" movie stars in 1980 that are actually stars, can I work to fix that? - FIX get 1975-1980 movies
+When we calculate the movie star power we are getting NAs for about 125 rows - Turn true NAs into zeros
+How to deal with COVID year - Exclude?
+How to measure star power - Wins above replacement, fit a model for each movie to predict results and use excess ROI as a measure. Combine that with the number of movies the actor has participated in to reward number of performances as well.
+
