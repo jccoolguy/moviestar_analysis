@@ -1,0 +1,38 @@
+---
+title: "Creating Stars"
+author: "JC"
+format: html
+editor: visual
+---
+
+```{r}
+library(qs)
+library(tidyverse)
+library(ggrepel)
+library(priceR)
+```
+
+## Loading Data
+
+```{r}
+data <- qread("tmdb_top50_budget_movies.qs")
+cast <- qread("cast_correceted.qs")
+movie_df <- qread("movie_df.qs")
+```
+
+### Reviewing available data
+
+```{r}
+cast_df <- cast$cast_corrected
+head(cast_df)
+```
+
+```{r}
+head(movie_df)
+```
+
+```{r}
+cast_complete <- cast_df |> 
+  left_join(movie_df,by = "movie_id")
+head(cast_complete)
+```

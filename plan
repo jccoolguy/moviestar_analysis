@@ -1,3 +1,6 @@
 Get Twenty Biggest Movie Stars of each year
   How to define what makes a movie star "big"
   
+Notes:
+We have a lot of "NA" movie stars in 1980 that are actually stars, can I work to fix that?
+When we calculate the movie star power we are getting NAs for about 125 rows
