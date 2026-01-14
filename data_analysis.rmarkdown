@@ -1,0 +1,230 @@
+---
+title: "data_analysis"
+format: html
+editor: visual
+---
+
+
+# Libraries
+
+
+```{r}
+library(tidyverse)
+library(qs)
+```
+
+
+# Loading Data
+
+
+```{r}
+data <- qread("tmdb_top50_budget_movies.qs")
+cast <- qread("cast_correceted.qs")
+movie_df <- qread("movie_df.qs")
+```
+
+
+### Movie Level
+
+
+```{r}
+movie_df <- movie_df |> 
+  mutate(roi = revenue_2023_dollars / budget_2023_dollars,
+         log_roi = log(roi))
+```
+
+
+### Cast DF
+
+
+```{r}
+cast_df <- cast$cast_corrected |> 
+  left_join(movie_df, by = "movie_id")
+head(cast_df)
+```
+
+
+# Star Power
+
+Grabbing ROI for each actor/movie
+
+
+```{r}
+lookback_years <- 10
+
+#ROI per actor-movie row
+actor_year_perf <- cast_df |> 
+  group_by(actor_id, year) |> 
+  summarize(
+    avg_roi_year = mean(roi,  na.rm = TRUE),
+    .groups = "drop"
+  )
+head(actor_year_perf)
+```
+
+
+Trailing window star power:
+
+
+```{r}
+actor_star <- actor_year_perf |> 
+  arrange(actor_id, year) |> 
+  group_by(actor_id) |> 
+  mutate(
+    star_power = sapply(seq_along(year), function(i){
+      this_year <- year[i]
+      past_vals <- avg_roi_year[year < this_year & year 
+                                >= this_year - lookback_years]
+      if(length(past_vals) == 0 || all(is.na(past_vals))){
+        NA_real_
+      }
+      else{
+        mean(past_vals,na.rm = TRUE)
+      }
+    })
+  ) |> 
+  ungroup()
+```
+
+
+Adding star power back to cast df:
+
+
+```{r}
+cast_with_star <- cast_df |> 
+  left_join(
+    actor_star |> select(actor_id, year, star_power),
+    by = c("actor_id", "year")
+  )
+head(cast_with_star)
+```
+
+
+Billing weights
+
+
+```{r}
+cast_with_star <- cast_with_star |> 
+  mutate(billing_weight = 1/(1 + billing_order))
+
+movie_star <- cast_with_star |> 
+  group_by(movie_id) |> 
+  summarize(
+    movie_star_power = weighted.mean(star_power, billing_weight, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+movie_df <- movie_df |> 
+  left_join(movie_star, by = "movie_id")
+head(movie_df)
+```
+
+
+# Franchise strength
+
+
+```{r}
+franchise_hist <- movie_df |> 
+  filter(!is.na(collection_id)) |> 
+  arrange(collection_id,year) |> 
+  group_by(collection_id) |> 
+  mutate(
+    #cumlative *prior* stats so lag()
+    franchise_n_prior = lag(cummax(row_number()) - 1, default = 0),
+    franchise_sum_rev_prior = lag(cumsum(revenue_2023_dollars), default = 0),
+    franchise_sum_roi_prior = lag(cumsum(roi), default = 0),
+    franchise_avg_roi_prior = ifelse(franchise_n_prior > 0,
+                                     franchise_sum_roi_prior / franchise_n_prior,
+                                     NA_real_)
+  ) |> 
+  ungroup() |> 
+  select(
+    movie_id,
+         franchise_n_prior,
+         franchise_sum_rev_prior,
+         franchise_avg_roi_prior
+         )
+head(franchise_hist)
+```
+
+```{r}
+movie_df <- movie_df |> 
+  left_join(franchise_hist, by = "movie_id") |> 
+  mutate(
+    franchise_n_prior = ifelse(is.na(franchise_n_prior),0, franchise_n_prior),
+    franchise_sum_rev_prior = ifelse(is.na(franchise_sum_rev_prior), 0, franchise_sum_rev_prior),
+    franchise_avg_roi_prior = ifelse(is.na(franchise_avg_roi_prior), 0, franchise_avg_roi_prior),
+    ip_strength = franchise_avg_roi_prior
+  )
+head(movie_df)
+```
+
+
+# Baseline Model
+
+
+```{r}
+base_mod <- lm(
+  log_roi ~ movie_star_power + ip_strength + log(budget_2023_dollars) + year,
+  data = movie_df
+)
+
+summary(base_mod)
+```
+
+
+Plots
+
+
+```{r}
+movie_df <- movie_df |> 
+  mutate(decade = floor(year / 10) * 10)
+```
+
+
+## By Decade Model
+
+
+```{r}
+library(broom)
+
+decade_coefs <- movie_df |> 
+  group_by(decade) |> 
+  do({
+    mod <- lm(
+      log_roi ~ movie_star_power + ip_strength + log(budget_2023_dollars),
+      data = .
+    )
+    tidy(mod)
+  }) |> 
+  ungroup()
+head(decade_coefs)
+```
+
+```{r}
+effect_over_time <- decade_coefs %>%
+  filter(term %in% c("movie_star_power", "ip_strength"))
+head(effect_over_time)
+```
+
+
+# Effects Over Time
+
+
+```{r}
+ggplot(effect_over_time,
+       aes(x = decade, y = estimate, color = term, group = term)) +
+  geom_line() +
+  geom_point() +
+  geom_errorbar(aes(ymin = estimate - 1.96 * std.error,
+                    ymax = estimate + 1.96 * std.error),
+                width = 1.5) +
+  labs(
+    x = "Decade",
+    y = "Estimated effect on log(ROI)",
+    color = "Predictor",
+    title = "Change in Star Power and IP Effects on Movie ROI over time"
+  ) +
+  theme_minimal()
+```
+
