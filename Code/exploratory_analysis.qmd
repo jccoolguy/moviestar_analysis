@@ -1,0 +1,298 @@
+---
+title: "exploratory analysis"
+author: "Jack Cunningham"
+format: html
+editor: visual
+---
+
+# Libraries
+
+```{r}
+library(qs)
+library(tidyverse)
+library(ggrepel)
+library(priceR)
+```
+
+# Loading Data
+
+```{r}
+data <- qread("tmdb_top50_budget_movies.qs")
+cast <- qread("cast_correceted.qs")
+```
+
+```{r}
+movie_df <- data$movies
+head(movie_df)
+```
+
+# Movie Dataset
+
+## Missing Values
+
+```{r}
+colSums(is.na(movie_df))
+```
+
+Only missing values are contained in the collection_id and collection_name columns. This makes sense, they are simply movies that aren't associated with a franchise. For the time being I will leave this as is.
+
+## How many movies by year?
+
+I'd like to check the number of movies I've successfully pulled by year.
+
+```{r}
+movies_by_year <- movie_df |> 
+  group_by(year) |> 
+  summarise(n = n(), avg_budget = mean(budget), 
+            lower_20 = quantile(budget,.2), upper_20 = quantile(budget,.8))
+movies_by_year |> 
+  ggplot(aes(x = year, y = n)) +
+  geom_col()
+```
+
+That's perfect, we have 50 movies for each year which is what we want.
+
+## Budget by Year
+
+```{r}
+movies_by_year |> 
+  ggplot(aes(x = year, y = avg_budget)) +
+  geom_line()
+```
+
+There is a mostly steady increase in budget with the exception of the 2020 COVID year, lets take a look at that year.
+
+## 2020 analysis
+
+```{r}
+movies_2020 <- movie_df |> 
+  filter(year == 2020)
+head(movies_2020)
+```
+
+```{r}
+movies_2020 |> 
+  ggplot(aes(x = year, y = budget)) +
+  geom_boxplot() +
+  geom_jitter(width = .15, alpha = .5) +
+  geom_text_repel(data = movies_2020 |> filter(budget > 100000000),
+                  aes(label = title),
+                  size = 3)
+```
+
+We see that there are a few outlier films that are over the 50 million dollar budget mark. This is in vast contrast to previous years, the last year with an average budget of 50 million was 1995.
+
+This obvious outlier year will demand some special attention.
+
+## Profitability
+
+A simplistic measure of the profitability of a movie is its revenue minus 2.5\*budget. Let's see how this has changed for the top 50 highest budget movies overtime.
+
+```{r}
+movie_df <- movie_df |> 
+  mutate(profitability = revenue - 2.5*budget)
+```
+
+```{r}
+movie_df |>
+  group_by(year) |> 
+  ggplot(aes(x = year, y = profitability, group = year)) +
+  geom_boxplot()
+```
+
+Profitability is pretty stable overtime, from 2000 to 2019 we start to see more high earning outliers. In 2020 and the following years we see profitability drop with more movies having large losses.
+
+Since the axes are being stretched by outliers I'll take a look at the plot for median profitability.
+
+```{r}
+movie_df |> 
+  group_by(year) |>
+  summarise(med_profit = median(profitability)) |> 
+  ggplot(aes(x = year, y = med_profit)) +
+  geom_line()
+```
+
+We can more clearly see the trend revealed in the previous plot, profits by our measure expanded from 2000 to 2019 and dropped dramatically after the pandemic year of 2020.
+
+## IP share of top budgeted movies over time
+
+```{r}
+movie_df <- movie_df |>
+  mutate(established_ip = !is.na(collection_name))
+```
+
+```{r}
+movie_df |> 
+  group_by(year) |> 
+  summarise(established_ip_percent = mean(established_ip)) |> 
+  ggplot(aes(x = year, y = established_ip_percent)) +
+  geom_line()
+```
+
+For the top fifty budgeted movies in each year its clear that established IP is taking up a larger share than before.
+
+Let's see the budgets of established IP versus independent movies. A complication we will run into is inflation, so let's first create versions of budget and revenue that are adjusted to 1980 dollars.
+
+```{r}
+movie_df$revenue_2023_dollars <- 
+  adjust_for_inflation(movie_df$revenue,
+                       from_date = movie_df$year,
+                       to_date = 2023,
+                       country = "US")
+```
+
+```{r}
+movie_df$budget_2023_dollars <- 
+  adjust_for_inflation(movie_df$budget,
+                       from_date = movie_df$year,
+                       to_date = 2023,
+                       country = "US")
+```
+
+```{r}
+movie_df |> 
+  ggplot(aes(x = year, y = budget_2023_dollars)) +
+  geom_point()
+```
+
+```{r}
+movie_df |> 
+  group_by(year) |> 
+  summarise(budget_med = median(budget_2023_dollars), 
+            revenue_med = median(revenue_2023_dollars)) |> 
+  ggplot(aes(x = year)) +
+  geom_line(aes(y = budget_med), col = "red") +
+  geom_line(aes(y = revenue_med), col = "blue")
+```
+
+We can see that inflation adjusted revenues were trending upward while budgets flattened around the year 2000. We again see the 2020 year as a massive outlier.
+
+IP vs non-IP:
+
+```{r}
+movie_df |> 
+  ggplot(aes(x = established_ip, y = budget_2023_dollars)) +
+  geom_boxplot()
+```
+
+There is a difference in budgets, established IPs have higher budgets generally but non-established IPs are not far behind.
+
+We can fit a simple linear model to quickly see if this difference is statistically significant.
+
+```{r}
+budget_ip <- lm(budget_2023_dollars ~ established_ip, data = movie_df)
+summary(budget_ip)
+```
+
+The difference is statically significant.
+
+Since we have made changes to the movie table I resave it down.
+
+```{r}
+qsave(movie_df,
+      file = "movie_df.qs")
+```
+
+# Cast
+
+```{r}
+cast <- data$cast
+head(cast)
+```
+
+The first thing I'd like to look at are the actors with the most casting.
+
+```{r}
+cast |> 
+  group_by(actor_name) |> 
+  summarise(num_movies = n()) |> 
+  arrange(desc(num_movies))
+```
+
+We see the usual suspects.
+
+A complication we will run into is if the actor is a "star" at the time of the release of each movie.
+
+## Lead Actors
+
+Let's take a look at the leading role frequency for each actor.
+
+```{r}
+cast |> 
+  group_by(actor_name) |> 
+  summarise(num_movies = n(), num_leading = sum(billing_order == 0),
+            lead_freq = num_leading/num_movies) |> 
+  arrange(desc(num_leading))
+```
+
+## How to define stardom?
+
+I define stardom as being the lead actor of a top ten budgeted film that had a profitable box office three times in the preceding five years.
+
+# Star Table
+
+Getting the leads
+
+```{r}
+leads <- cast |> 
+  filter(billing_order == 0)
+head(leads)
+```
+
+```{r}
+stars <- movie_df |> 
+  group_by(year) |> 
+  slice_max(budget, n = 10) |> 
+  filter(profitability > 0) |> 
+  ungroup() |> 
+  left_join(leads, by = "movie_id")
+head(stars)
+```
+
+It seems we have a problem with missing actors from movies, will need to investigate.
+
+## Missing Cast Info
+
+```{r}
+cast_track <- cast |> 
+  group_by(movie_id) |> 
+  summarise(n = n())
+head(cast_track)
+dim(cast_track)
+```
+
+```{r}
+cast_track |> 
+  ggplot(aes(x = n)) +
+  geom_bar()
+```
+
+Any NAs?
+
+```{r}
+colSums(is.na(cast))
+```
+
+```{r}
+cast |> 
+  group_by(billing_order) |> 
+  summarise(n = n()) |> 
+  ggplot(aes(x = billing_order)) + 
+  geom_bar()
+```
+
+# Stars missing analysis
+
+```{r}
+stars <- stars |> 
+  mutate(missing = is.na(actor_id))
+head(stars$missing)
+```
+
+```{r}
+stars |> 
+  group_by(year) |> 
+  summarise(missing_num = sum(missing)) |> 
+  ggplot(aes(x = year, y = missing_num)) +
+  geom_line()
+```
