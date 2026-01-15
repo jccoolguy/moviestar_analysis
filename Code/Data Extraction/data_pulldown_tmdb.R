@@ -138,29 +138,37 @@ qsave(top50_movies, "top50_movies.qs")
 ## 5. Genres (robust parsing) ----
 message("Extracting genres...")
 
-genres_tbl <- details_list |>
-  keep(~ .x$id %in% top50_movies$movie_id) |>
-  imap_dfr(function(x, movie_id) {
+
+genres_tbl <- imap_dfr(
+  details_list,
+  function(x, idx) {
     g <- x$genres
+  #  print(g)
+   # print(g[1,2])
     
-    # Must be a list and non-empty
-    if (!is.list(g) || length(g) == 0) return(NULL)
+    # No genres at all
+    if (length(g) == 0) {
+      print("here")
+      return(tibble(
+        movie_id  = x$id,
+        top_genre = NA_character_
+      ))
+    }
     
-    # Keep only proper genre objects with id and name
-    g <- g[
-      purrr::map_lgl(g, ~ is.list(.x) &&
-                       !is.null(.x$id) &&
-                       !is.null(.x$name))
-    ]
-    
-    if (length(g) == 0) return(NULL)
+    # Make sure first genre has a name
+    top_name <- tryCatch(
+      g[1,2],
+      error = function(e) NA_character_
+    )
     
     tibble(
-      movie_id   = as.integer(movie_id),
-      genre_id   = purrr::map_int(g, "id"),
-      genre_name = purrr::map_chr(g, "name")
+      movie_id  = x$id,
+      top_genre = top_name
     )
-  })
+  }
+)
+
+
 
 qsave(genres_tbl, "genres_tbl.qs")
 nrow(genres_tbl)
