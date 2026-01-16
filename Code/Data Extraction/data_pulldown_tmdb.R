@@ -180,9 +180,9 @@ get_credits <- function(id) {
 
 
 if (!file.exists("credits_raw.qs")) {
-credits_raw <- map(
-  top50_movies$movie_id,
-    safely(get_credits)
+credits_raw <- setNames(
+  map(movies_tbl$movie_id, safely(get_credits)),
+  movies_tbl$movie_id
 )
   
 qsave(credits_raw, "credits_raw.qs")
@@ -194,8 +194,7 @@ qsave(credits_raw, "credits_raw.qs")
 ## 6a. Full cast table ----
 message("Building full cast table...")
 
-
-#credits_list <- credits_raw |> purrr::map(normalize_details)
+#Reformatting
 actors_tbl <- imap_dfr(
   credits_raw,
   function(x, movie_id) {
@@ -204,74 +203,65 @@ actors_tbl <- imap_dfr(
     if (is.null(x$result) || is.null(x$result$cast)) return(NULL)
     
     as_tibble(x$result$cast) |>
-      filter(order <= 5) |>
-      mutate(movie_id = as.integer(movie_id)) |>
-      select(
-        movie_id,
-        actor_id = id,
-        actor_name = name,
-        billing_order = order,
-        character
-      )
+      mutate(movie_id = as.integer(movie_id))
+      
   }
-)
-
+) |> 
+  filter(order <= 5) |> 
+  mutate(movie_id = as.integer(movie_id)) |>
+  select(
+    movie_id,
+    actor_id = id,
+    actor_name = name,
+    billing_order = order,
+    character
+  ) |> 
+  filter(movie_id %in% top50_movies$movie_id)
 
 qsave(actors_tbl, "actors_tbl.qs")
 nrow(actors_tbl)
 
 
-# ## 6b. Directors table (from crew) ----
-# message("Extracting directors from crew...")
-# 
-# directors_tbl <- imap_dfr(
-#   credits_list,
-#   function(x, movie_id) {
-#     
-#     if (is.null(x$crew)) return(NULL)
-#     
-#     crew <- x$crew
-#     if (!is.list(crew) || length(crew) == 0) return(NULL)
-#     
-#     crew <- crew[
-#       map_lgl(crew, ~ is.list(.x) &&
-#                 !is.null(.x$id) &&
-#                 !is.null(.x$name) &&
-#                 !is.null(.x$job))
-#     ]
-#     
-#     if (length(crew) == 0) return(NULL)
-#     
-#     directors <- crew[map_lgl(crew, ~ .x$job == "Director")]
-#     if (length(directors) == 0) return(NULL)
-#     
-#     tibble(
-#       movie_id      = as.integer(movie_id),
-#       director_id   = map_int(directors, "id"),
-#       director_name = map_chr(directors, "name")
-#     )
-#   }
-# )
-# 
-# qsave(directors_tbl, "directors_tbl.qs")
-# nrow(directors_tbl)
-# 
-# ## 7. IP / franchise flags ----
-# ip_tbl <- top50_movies |>
-#   mutate(
-#     is_ip = !is.na(collection_id)
-#   ) |>
-#   select(movie_id, is_ip, collection_id, collection_name)
-# 
-# qsave(ip_tbl, "ip_tbl.qs")
+## 6b. Directors table (from crew) ----
+message("Extracting directors from crew...")
+
+
+directors_tbl <- imap_dfr(
+  credits_raw,
+  function(x, movie_id) {
+    
+    # Skip failed API calls
+    if (is.null(x$result) || is.null(x$result$crew)) return(NULL)
+    
+    as_tibble(x$result$crew) |>
+      mutate(movie_id = as.integer(movie_id))
+    
+  }
+) |> 
+  filter(job == "Director") |> 
+  select(movie_id, director_id = id,director_name = name)|> 
+  filter(movie_id %in% top50_movies$movie_id)
+
+
+qsave(directors_tbl, "directors_tbl.qs")
+nrow(directors_tbl)
+
+## 7. IP / franchise flags ----
+ip_tbl <- top50_movies |>
+  mutate(
+    is_ip = !is.na(collection_id)
+  ) |>
+  select(movie_id, is_ip, collection_id, collection_name)
+
+qsave(ip_tbl, "ip_tbl.qs")
 
 ## 8. Bundle everything into a single object ----
 tmdb_data <- list(
   movies    = top50_movies,
   genres    = genres_tbl,
   actors      = actors_tbl,
-  #directors = directors_tbl,
-  #ip        = ip_tbl
+  directors = directors_tbl,
+  ip        = ip_tbl
 )
 
 qsave(tmdb_data, "tmdb_1970_2024_top50_by_budget.qs")
