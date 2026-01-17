@@ -1,0 +1,66 @@
+---
+title: "Exploratory Analysis Actors"
+author: "Jack Cunningham"
+format: html
+editor: visual
+---
+
+# Libraries
+
+```{r}
+library(qs)
+library(tidyverse)
+library(ggrepel)
+library(priceR)
+```
+
+# Loading Data
+
+```{r}
+data <- qs::qread(
+  "D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Combined/tmdb_1970_2024_top50_by_budget.qs"
+)
+movie_df <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Adjustments/movie_df_1.qs")
+```
+
+Movie table:
+
+```{r}
+movie_df <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Adjustments/movie_df_1.qs")
+head(movie_df)
+```
+
+Actors table:
+
+```{r}
+actors_df <- data$actors
+head(actors_df)
+```
+
+We want to do a quick left join to bring the movie data over for each movie:
+
+```{r}
+actors_complete_df <- actors_df |> 
+  left_join(movie_df, by = "movie_id")
+head(actors_complete_df)
+```
+
+## Leads
+
+```{r}
+leads <- actors_complete_df |> 
+  filter(billing_order == 0)
+head(leads)
+```
+
+Who lead the most movies in each decade?
+
+```{r}
+leads |> 
+  mutate(period = floor(year/5) * 5) |> 
+  group_by(actor_name, period) |> 
+  summarise(leading_roles = n(), .groups = "drop") |> 
+  group_by(period) |> 
+  slice_max(leading_roles, n = 1, with_ties = FALSE) |> 
+  arrange(desc(period))
+```
