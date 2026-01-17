@@ -17,8 +17,9 @@ library(priceR)
 # Loading Data
 
 ```{r}
-data <- qread("tmdb_top50_budget_movies.qs")
-cast <- qread("cast_correceted.qs")
+data <- qs::qread(
+  "D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Combined/tmdb_1970_2024_top50_by_budget.qs"
+)
 ```
 
 ```{r}
@@ -50,7 +51,7 @@ movies_by_year |>
   geom_col()
 ```
 
-That's perfect, we have 50 movies for each year which is what we want.
+We have 50 movies a year after the late 70s, before then it hovers around the high 40s.
 
 ## Budget by Year
 
@@ -137,7 +138,7 @@ Let's see the budgets of established IP versus independent movies. A complicatio
 movie_df$revenue_2023_dollars <- 
   adjust_for_inflation(movie_df$revenue,
                        from_date = movie_df$year,
-                       to_date = 2023,
+                       to_date = 2024,
                        country = "US")
 ```
 
@@ -145,7 +146,7 @@ movie_df$revenue_2023_dollars <-
 movie_df$budget_2023_dollars <- 
   adjust_for_inflation(movie_df$budget,
                        from_date = movie_df$year,
-                       to_date = 2023,
+                       to_date = 2024,
                        country = "US")
 ```
 
@@ -186,12 +187,7 @@ summary(budget_ip)
 
 The difference is statically significant.
 
-Since we have made changes to the movie table I resave it down.
-
-```{r}
-qsave(movie_df,
-      file = "movie_df.qs")
-```
+Since we have made changes to the movie table I will copy the steps I took into a .R file so it is easily traceable.
 
 # Cast
 
