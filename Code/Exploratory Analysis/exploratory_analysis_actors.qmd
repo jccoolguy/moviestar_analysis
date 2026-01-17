@@ -64,3 +64,5 @@ leads |>
   slice_max(leading_roles, n = 1, with_ties = FALSE) |> 
   arrange(desc(period))
 ```
+
+# Star Power
