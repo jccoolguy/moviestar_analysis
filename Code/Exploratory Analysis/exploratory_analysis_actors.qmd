@@ -66,3 +66,5 @@ leads |>
 ```
 
 # Star Power
+
+We need a way to assess the stardom of each actor at the time of each movie.

@@ -1,0 +1,93 @@
+---
+title: "Exploratory Analysis IP Effect"
+author: "Jack Cunningham"
+format: html
+editor: visual
+---
+
+# Libraries
+
+```{r}
+library(qs)
+library(tidyverse)
+```
+
+# Loading Data
+
+```{r}
+data <- qs::qread(
+  "D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Combined/tmdb_1970_2024_top50_by_budget.qs"
+)
+movie_df <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Adjustments/movie_df_1.qs")
+```
+
+Movie table:
+
+```{r}
+head(movie_df)
+```
+
+IP table:
+
+```{r}
+ip_df <- data$ip
+head(ip_df)
+```
+
+Left join on IP table to bring in movie details:
+
+```{r}
+ip_complete_df <- ip_df |> 
+  left_join(movie_df |> select(-collection_id,-collection_name),"movie_id")
+head(ip_complete_df)
+```
+
+# First Movie for IP:
+
+First I am creating an IP table that houses only movies associated with an IP:
+
+```{r}
+ip_associated_df <- ip_complete_df |> 
+  filter(!is.na(collection_id))
+head(ip_associated_df)
+```
+
+First getting the date of the first movie for each IP:
+
+```{r}
+ip_associated_df <- ip_associated_df |> 
+  group_by(collection_id) |> 
+  mutate(first_movie_date = min(release_date),
+         is_first_in_franchise = release_date == first_movie_date) |> 
+  ungroup()
+head(ip_associated_df)
+```
+
+How often are new IPs being made?
+
+```{r}
+ip_associated_df |> 
+  group_by(year) |> 
+  summarise(new_ips = sum(is_first_in_franchise)) |> 
+  ggplot(aes(x = year, y = new_ips)) +
+  geom_line()
+```
+
+It seems the number of new ips every year has a slight upward trend, but usually around 9 or so a year.
+
+# Time between sequels
+
+A helpful bit of information about each movie would be the time between an IP movie and its last entrant.
+
+```{r}
+ip_associated_df <- ip_associated_df |> 
+  group_by(collection_id) |> 
+  arrange(release_date) |> 
+  mutate(
+    prev_release = lag(release_date),
+    gap_days = as.numeric(release_date - prev_release),
+    gap_years = gap_days / 365
+  ) |> 
+  ungroup()
+head(ip_associated_df)
+```
