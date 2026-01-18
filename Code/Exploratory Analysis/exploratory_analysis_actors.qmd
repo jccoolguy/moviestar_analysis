@@ -21,12 +21,13 @@ data <- qs::qread(
   "D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Combined/tmdb_1970_2024_top50_by_budget.qs"
 )
 movie_df <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Adjustments/movie_df_1.qs")
+ip_df <- movie_df <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Adjustments/ip_df_1.qs")
+genres_df <- data$genres
 ```
 
 Movie table:
 
 ```{r}
-movie_df <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Adjustments/movie_df_1.qs")
 head(movie_df)
 ```
 
@@ -35,6 +36,12 @@ Actors table:
 ```{r}
 actors_df <- data$actors
 head(actors_df)
+```
+
+IP table:
+
+```{r}
+head(ip_df)
 ```
 
 We want to do a quick left join to bring the movie data over for each movie:
@@ -67,4 +74,4 @@ leads |>
 
 # Star Power
 
-We need a way to assess the stardom of each actor at the time of each movie.
+We need a way to assess the stardom of each actor at the time of each movie. Lets try to use a VAR method, we can predict the success of the film and assign the difference to each actor.

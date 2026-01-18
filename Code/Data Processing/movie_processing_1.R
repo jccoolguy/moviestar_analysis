@@ -6,7 +6,8 @@ library(priceR)
 #CHANGES MADE FROM ORIGINAL FILE
   #Adding profit 
   #Adding flag for whether a movie is associated with an established IP
-  #Adding inflationary adjusted revenues and budgets
+  #Adding inflationary adjusted revenues, budgets, profits
+  #Adding log profitability measure
 
 #Reading Data
 data <- qs::qread(
@@ -34,5 +35,14 @@ movie_df$budget_2024_dollars <-
                        from_date = movie_df$year,
                        to_date = 2024,
                        country = "US")
+
+#Adding inflationary adjusted Profits
+movie_df <- movie_df |> 
+  mutate(profit_2024_dollars = revenue_2024_dollars - 2.5*budget_2024_dollars)
+#Adding log profitability measure
+movie_df <- movie_df |> 
+  mutate(log_profitability = log(revenue/(2.5*budget)))
+
+
 #Saving Data
 qsave(movie_df, "Data/Processed_Data/Adjustments/movie_df_1.qs")

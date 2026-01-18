@@ -1,0 +1,322 @@
+---
+title: "Exploratory Analysis VAR"
+format: html
+editor: visual
+---
+
+# Libraries
+
+```{r}
+library(qs)
+library(tidyverse)
+```
+
+# Loading Data
+
+```{r}
+data <- qs::qread(
+  "D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Combined/tmdb_1970_2024_top50_by_budget.qs"
+)
+movie_df <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Adjustments/movie_df_1.qs")
+ip_df <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Adjustments/ip_df_1.qs")
+genres_df <- data$genres
+directors_df <- data$directors
+```
+
+# Baseline without IP or Actors
+
+Before modeling I want to check out our response variable, log profitability.
+
+```{r}
+movie_df |> 
+  ggplot(aes(x = log_profitability)) +
+  geom_density()
+```
+
+Looks great, very symmetrical and tracks with intuition that most films break even.
+
+Creating a df table that left joins and grabs a bunch of relevant info.
+
+```{r}
+df <- movie_df |>
+  mutate(log_budget = log(budget)) |> 
+  left_join(genres_df, by = "movie_id") |> 
+  #left_join(directors_df, by = "movie_id") |> 
+  filter(!is.na(top_genre))
+head(df)
+```
+
+Fitting a baseline model which predicts profitability based on log budget, genre and holding a fixed effect for year.
+
+```{r}
+library(fixest)
+baseline0 <- feols(
+   log_profitability ~ log_budget + top_genre | year,
+  data = df
+)
+```
+
+Checking assumptions:
+
+```{r}
+plot(fitted(baseline0), resid(baseline0),
+     xlab = "Fitted values",
+     ylab = "Residuals")
+abline(h = 0, col = "red")
+```
+
+```{r}
+plot(df$log_budget, resid(baseline0),
+     xlab = "log(budget)",
+     ylab = "Residuals")
+abline(h = 0, col = "red")
+```
+
+```{r}
+boxplot(resid(baseline0) ~ df$year,
+        outline = FALSE,
+        las = 2)
+abline(h = 0, col = "red")
+
+
+```
+
+This all looks good, moving forward..
+
+Assigning the residuals to each movie:
+
+```{r}
+df <- df |> 
+  mutate(resid0 = resid(baseline0))
+head(df)
+```
+
+# IP Power
+
+```{r}
+ip_movies <- df |>
+  filter(!is.na(collection_id)) |>
+  arrange(collection_id, year, release_date, movie_id) |>
+  group_by(collection_id) |>
+  mutate(
+    installment = row_number()
+  ) |>
+  ungroup()
+head(ip_movies)
+```
+
+```{r}
+ip_movies |>
+  count(installment)
+```
+
+# Adding an IP Power feature:
+
+```{r}
+lambda <- 0.15
+
+ip_movies <- ip_movies |>
+  group_by(collection_id) |>
+  arrange(year, release_date, movie_id) |>
+  mutate(
+    ip_power_prior_decay = purrr::map_dbl(
+      row_number(),
+      function(i) {
+        if (i == 1) return(0)
+        sum(
+          resid0[1:(i - 1)] *
+          exp(-lambda * (year[i] - year[1:(i - 1)]))
+        )
+      }
+    )
+  ) |>
+  ungroup()
+```
+
+Merging back to full table:
+
+```{r}
+df <- df |>
+  left_join(
+    ip_movies |>
+      select(movie_id, ip_power_prior_decay),
+    by = "movie_id"
+  ) |>
+  mutate(
+    ip_power_prior_decay  = coalesce(ip_power_prior_decay, 0)
+  )
+
+```
+
+# Some Checks
+
+```{r}
+ip_movies |> 
+  filter(installment == 1) |> 
+  summarise(
+    max_ip_power = max(ip_power_prior_decay)
+  )
+```
+
+```{r}
+ip_movies |>
+  group_by(installment) |>
+  summarise(
+    mean_ip_power = mean(ip_power_prior_decay)
+  )
+```
+
+```{r}
+ip_movies |>
+  filter(collection_name == "Star Wars Collection") |>
+  select(title, year, resid0, ip_power_prior_decay)
+```
+
+One concern I have is that the ip decays too hard for something like star wars which has such cultural equity that it doesnt really matter if they have taken a break. So I am instead going to define ip momentum, which is a decaying sum of performance. So for instance in a triology the third movie will have high momentum, while a reboot 10 years later will have low. On the other hand evergreen will be a sum of performance overtime, this factors in something like James Bond or Star Wars which can hit a reboot and be instantly popular (regardless of how good the movie is...).
+
+```{r}
+has_release_date <- "release_date" %in% names(df)
+
+lambda <- 0.15  # momentum decay rate (we can tune later)
+
+ip_tbl <- df |>
+  filter(!is.na(collection_id)) |>
+  arrange(
+    collection_id,
+    year,
+    if (has_release_date) release_date else year,  # harmless if absent
+    movie_id
+  ) |>
+  group_by(collection_id) |>
+  mutate(
+    installment = row_number(),
+    years_since_last_installment = year - lag(year),
+
+    # Evergreen = sum of prior residuals (no decay)
+    ip_evergreen_prior = lag(cumsum(resid0), default = 0),
+
+    # Momentum = decay-weighted sum of prior residuals (prior-only)
+    ip_momentum_prior = map_dbl(row_number(), function(i) {
+      if (i == 1) return(0)
+      past_resid <- resid0[1:(i - 1)]
+      past_years <- year[1:(i - 1)]
+      cur_year   <- year[i]
+      sum(past_resid * exp(-lambda * (cur_year - past_years)))
+    })
+  ) |>
+  ungroup() |>
+  select(
+    movie_id,
+    installment,
+    years_since_last_installment,
+    ip_evergreen_prior,
+    ip_momentum_prior
+  )
+
+# Join back to df and set non-IP movies to 0
+df <- df |>
+  left_join(ip_tbl, by = "movie_id") |>
+  mutate(
+    installment = coalesce(installment, 1L),
+    years_since_last_installment = coalesce(years_since_last_installment, NA_real_),
+    ip_evergreen_prior = coalesce(ip_evergreen_prior, 0),
+    ip_momentum_prior  = coalesce(ip_momentum_prior, 0)
+  )
+```
+
+Spot checking that movies that are first have zero for each:
+
+```{r}
+df |>
+  filter(!is.na(collection_id), installment == 1) |>
+  summarise(
+    max_evergreen = max(ip_evergreen_prior),
+    max_momentum  = max(ip_momentum_prior)
+  )
+```
+
+Looks good, now checking star wars:
+
+```{r}
+df |>
+  filter(collection_id == df$collection_id[which.max(df$ip_evergreen_prior)]) |>
+  arrange(year, movie_id) |>
+  select(title, year, resid0, installment, ip_evergreen_prior, ip_momentum_prior)
+
+```
+
+# Actor Star Power
+
+Now we fit we are getting the over performance for actors, conditioning on IP power. This makes it so an actor gets credit for the first film of an IP performing great... but an actor doesnt get as much credit for a huge ip coming out with a new movie.
+
+```{r}
+baseline_actor <- feols(
+  log_profitability ~ log_budget + top_genre + ip_evergreen_prior + ip_momentum_prior | year,
+  data = df,
+  vcov = "hetero"
+)
+
+df <- df |>
+  mutate(
+    resid_actor = resid(baseline_actor)
+  )
+```
+
+Taking a look at the model:
+
+```{r}
+summary(baseline_actor)
+```
+
+The evergreen variable does not seem significant, but I think its helpful for those edge cases we discussed before so for now ill leave it in.
+
+```{r}
+summary(df$resid_actor)
+```
+
+Quick residual checks:
+
+```{r}
+plot(fitted(baseline_actor), resid(baseline_actor),
+     xlab = "Fitted values",
+     ylab = "Residuals")
+abline(h = 0, col = "red")
+```
+
+Looks good.
+
+Heres a look at the residuals vs IP power. Starting with evergreen:
+
+```{r}
+plot(df$ip_evergreen_prior, resid(baseline_actor),
+     xlab = "IP evergreen prior",
+     ylab = "Actor residual")
+abline(h = 0, col = "red")
+```
+
+We can see that a ton of credit gets thrown around at the 0 IP evergreen prior, this makes sense. For a non-established IP the cast deserves much more credit (or blame) for a movies performance. It may be worth taking another look at this though.
+
+Now we look at the IP momentum prior:
+
+```{r}
+plot(df$ip_momentum_prior, resid(baseline_actor),
+     xlab = "IP momentum prior",
+     ylab = "Actor residual")
+abline(h = 0, col = "red")
+
+```
+
+This looks good, similar idea at momentum equals zero but that makes sense.
+
+Taking a look at influence:
+
+```{r}
+df$leverage <- hatvalues(baseline_actor)
+#df$cook     <- cooks.distance(baseline_actor)
+
+df |>
+  arrange(desc(leverage)) |>
+  select(title, year, log_profitability, leverage) |>
+  head(10)
+
+```
