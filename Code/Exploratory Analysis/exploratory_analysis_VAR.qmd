@@ -21,6 +21,7 @@ movie_df <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/
 ip_df <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Adjustments/ip_df_1.qs")
 genres_df <- data$genres
 directors_df <- data$directors
+actors_df <- data$actors
 ```
 
 # Baseline without IP or Actors
@@ -319,4 +320,154 @@ df |>
   select(title, year, log_profitability, abs_resid, ip_evergreen_prior, ip_momentum_prior) |>
   head(20)
 
+```
+
+We have the resid_actor column now, this is the performance attributed to the actors. Our next step is dividing that among each actor based on whether they are a lead or secondary character.
+
+```{r}
+actors_var <- actors_df |>
+  left_join(
+    df |> select(movie_id, year, resid_actor),
+    by = "movie_id"
+  )
+```
+
+Dividing credit:
+
+```{r}
+actors_var <- actors_var |>
+  mutate(
+    billing_weight = case_when(
+      billing_order == 0 ~ 0.40,
+      billing_order == 1 ~ 0.25,
+      billing_order %in% 2:5 ~ 0.35 / 4,
+      TRUE ~ NA_real_
+    ),
+    actor_var_contribution = resid_actor * billing_weight
+  )
+```
+
+Check:
+
+```{r}
+actors_var |>
+  group_by(movie_id) |>
+  summarise(
+    weight_sum = sum(billing_weight, na.rm = TRUE),
+    n = n()
+  ) |>
+  summarise(
+    min_weight = min(weight_sum),
+    max_weight = max(weight_sum),
+    min_n = min(n),
+    max_n = max(n)
+  )
+```
+
+Creating an actor level star power prior to each movie:
+
+Starting off we calculate each actors contribution, if its NA then we use zero.
+
+```{r}
+actors_var <- actors_var |>
+  mutate(
+    actor_var_contribution = resid_actor * billing_weight,
+    contrib_safe = replace_na(actor_var_contribution, 0)
+  )
+```
+
+First we have a cumulative sum:
+
+```{r}
+actors_var <- actors_var |>
+  arrange(actor_id, year, movie_id) |>
+  group_by(actor_id) |>
+  mutate(
+    actor_star_power_prior =
+      lag(cumsum(contrib_safe), default = 0)
+  ) |>
+  ungroup()
+```
+
+Then we also have a momentum, this places importance on recency :
+
+```{r}
+lambda_actor <- 0.15
+
+actors_var <- actors_var |>
+  group_by(actor_id) |>
+  arrange(year, movie_id) |>
+  mutate(
+    actor_star_power_momentum = map_dbl(
+      row_number(),
+      function(i) {
+        if (i == 1) return(0)
+        past <- contrib_safe[1:(i - 1)]
+        past_years <- year[1:(i - 1)]
+        cur_year <- year[i]
+        sum(past * exp(-lambda_actor * (cur_year - past_years)))
+      }
+    )
+  ) |>
+  ungroup()
+```
+
+Checking that first appearances must be zero:
+
+```{r}
+actors_var |>
+  group_by(actor_id) |>
+  slice_min(year, n = 1, with_ties = FALSE) |>
+  summarise(max_prior = max(actor_star_power_prior)) |> 
+  pull(max_prior) |> 
+  unique()
+```
+
+That looks good now.
+
+Bringing over the date and movie name fields from the df table.
+
+```{r}
+actors_var <- actors_var |> 
+  left_join(df |> 
+              select(movie_id, release_date, title),
+            by = "movie_id")
+```
+
+Seeing a certain actor:
+
+```{r}
+tom_cruise_stats <- actors_var |> 
+  filter(actor_name == "Tom Cruise")
+head(tom_cruise_stats)
+```
+
+```{r}
+tom_cruise_stats |> 
+  ggplot(aes(x = release_date)) +
+  geom_text(aes(y = actor_star_power_prior,label = title), vjust = -.5, size = 3) +
+  geom_line(aes(y = actor_star_power_prior)) +
+  geom_line(aes(y = actor_star_power_momentum))
+  
+```
+
+```{r}
+daniel_craig_stats <- actors_var |> 
+  filter(actor_name == "Daniel Craig")
+```
+
+```{r}
+daniel_craig_stats |> 
+  ggplot(aes(x = release_date)) +
+  geom_text(aes(y = actor_star_power_prior,label = title), vjust = -.5, size = 3) +
+  geom_line(aes(y = actor_star_power_prior)) +
+  geom_line(aes(y = actor_star_power_momentum))
+```
+
+Okay somehow we are missing the james bond movies, I think I need to consider rerunning the pull with only an english filter.
+
+```{r}
+timothee_chalamet_stats <- actors_var |> 
+  filter(actor_id == 1190668)
+head(timothee_chalamet_stats)
 ```

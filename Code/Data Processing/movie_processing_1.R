@@ -42,6 +42,8 @@ movie_df <- movie_df |>
 #Adding log profitability measure
 movie_df <- movie_df |> 
   mutate(log_profitability = log(revenue/(2.5*budget)))
+movie_df <- movie_df |> 
+  filter(revenue != 0)
 
 
 #Saving Data

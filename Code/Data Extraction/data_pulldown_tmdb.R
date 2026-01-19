@@ -62,7 +62,6 @@ get_seed_movies <- function(year, pages = 10) {
       query = list(
         primary_release_year = year,
         with_original_language = "en",  # <-- ADD (English originals),
-        with_origin_country    = "US",  # <-- ADD (US among production countries),
         sort_by = "revenue.desc",
         page = p
       )
@@ -130,7 +129,7 @@ qsave(movies_tbl, "movies_tbl.qs")
 ## 4. Top 50 movies by budget per year ----
 top50_movies <- movies_tbl |>
   filter(!is.na(year), year >= 1970, year <= 2024) |>
-  filter(budget > 0) |>
+  filter((budget > 0) & (revenue > 0)) |>
   group_by(year) |>
   slice_max(budget, n = 50, with_ties = FALSE) |>
   ungroup()
