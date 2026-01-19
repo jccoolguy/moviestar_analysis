@@ -311,12 +311,12 @@ This looks good, similar idea at momentum equals zero but that makes sense.
 Taking a look at influence:
 
 ```{r}
-df$leverage <- hatvalues(baseline_actor)
-#df$cook     <- cooks.distance(baseline_actor)
+df$resid_actor <- resid(baseline_actor)
+df$abs_resid <- abs(df$resid_actor)
 
 df |>
-  arrange(desc(leverage)) |>
-  select(title, year, log_profitability, leverage) |>
-  head(10)
+  arrange(desc(abs_resid)) |>
+  select(title, year, log_profitability, abs_resid, ip_evergreen_prior, ip_momentum_prior) |>
+  head(20)
 
 ```

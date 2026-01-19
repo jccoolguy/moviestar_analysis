@@ -54,13 +54,15 @@ tmdb_get <- function(endpoint, query = list(), sleep = 0.25) {
 ## 2. Discover movies by year (seed set) ----
 years <- 1970:2024   # <--- your requested range
 
-get_seed_movies <- function(year, pages = 5) {
+get_seed_movies <- function(year, pages = 10) {
   message("Discovering movies for year: ", year)
   map_dfr(1:pages, function(p) {
     out <- tmdb_get(
       "discover/movie",
       query = list(
         primary_release_year = year,
+        with_original_language = "en",  # <-- ADD (English originals),
+        with_origin_country    = "US",  # <-- ADD (US among production countries),
         sort_by = "revenue.desc",
         page = p
       )
@@ -133,6 +135,8 @@ top50_movies <- movies_tbl |>
   slice_max(budget, n = 50, with_ties = FALSE) |>
   ungroup()
 
+#movie_ids <- top50_movies$movie_id
+
 qsave(top50_movies, "top50_movies.qs")
 
 ## 5. Genres (robust parsing) ----
@@ -181,8 +185,8 @@ get_credits <- function(id) {
 
 if (!file.exists("credits_raw.qs")) {
 credits_raw <- setNames(
-  map(movies_tbl$movie_id, safely(get_credits)),
-  movies_tbl$movie_id
+  map(top50_movies$movie_id, safely(get_credits)),
+  top50_movies$movie_id
 )
   
 qsave(credits_raw, "credits_raw.qs")
