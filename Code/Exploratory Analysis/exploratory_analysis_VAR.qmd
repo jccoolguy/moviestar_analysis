@@ -597,3 +597,75 @@ outliers_80s <- df |>
   select(title, release_date, budget, revenue, profit, resid_actor)
 outliers_80s
 ```
+
+Most of these seem reasonable.
+
+The hand seems to have budget in CAD, revenue hard to track down.
+
+A lot look like genuine box office bombs, but I am a bit concerned about treating these small budget films the same as large budget films when their losses are smaller in absolute terms.
+
+Lets take a look at 90s flops.
+
+```{r}
+outliers_90s <- df |> 
+  filter(between(year, 1990, 2000)) |> 
+  filter(resid_actor < -2.5) |> 
+  arrange(resid_actor) |> 
+  select(title, release_date, budget, revenue, profit, resid_actor)
+outliers_90s
+```
+
+These all seem like genuine flops.
+
+Looking at 2000:
+
+```{r}
+outliers_00s <- df |> 
+  filter(between(year, 2000, 2010)) |> 
+  filter(resid_actor < -2.5) |> 
+  arrange(resid_actor) |> 
+  select(title, release_date, budget, revenue, profit, resid_actor)
+outliers_00s
+```
+
+Kill bill the whole bloody affair seems to be two movies packed in one, so not a great inclusion.
+
+Other than that, all look reasonable.
+
+```{r}
+outliers_10s <- df |> 
+  filter(between(year, 2010, 2019)) |> 
+  filter(resid_actor < -2.5) |> 
+  arrange(resid_actor) |> 
+  select(title, release_date, budget, revenue, profit, resid_actor)
+outliers_10s
+```
+
+The Irishman was a netflix release, so perhaps a bit silly to include in this way.
+
+The others look reasonable.
+
+```{r}
+outliers_20s <- df |> 
+  filter(between(year, 2020, 2024)) |> 
+  filter(resid_actor < -2.5) |> 
+  arrange(resid_actor) |> 
+  select(title, release_date, budget, revenue, profit, resid_actor)
+outliers_20s
+```
+
+Almost all of these at the start are limited releases that went to streaming. Is there a way to filter these out?
+
+There are much less positive outliers, so lets look at them all at once.
+
+```{r}
+positive_outliers <- df |>  
+  filter(resid_actor > 3)
+positive_outliers
+```
+
+These all seem super reasonable except Bad boys for life which released pre pandemic... so performed a lot better than 2020 films.
+
+Overall these is a case to be made to filter out years with low numbers of films. Particularly the 70s (at least the early portion) and deal with the covid years in some way. The combination of iffy data, not many releases and in the covid years case many small releases complicate our analysis if we were to ignore them.
+
+However, since our interest is to analyze IP power vs star power over time it could be okay to just note this and continue forward.

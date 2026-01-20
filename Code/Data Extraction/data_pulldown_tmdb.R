@@ -54,7 +54,7 @@ tmdb_get <- function(endpoint, query = list(), sleep = 0.25) {
 ## 2. Discover movies by year (seed set) ----
 years <- 1970:2024   # <--- your requested range
 
-get_seed_movies <- function(year, pages = 10) {
+get_seed_movies <- function(year, pages = 8) {
   message("Discovering movies for year: ", year)
   map_dfr(1:pages, function(p) {
     out <- tmdb_get(
@@ -131,7 +131,7 @@ top50_movies <- movies_tbl |>
   filter(!is.na(year), year >= 1970, year <= 2024) |>
   filter((budget > 0) & (revenue > 0)) |>
   group_by(year) |>
-  slice_max(budget, n = 150, with_ties = FALSE) |>
+  slice_max(budget, n = 50, with_ties = FALSE) |>
   ungroup()
 
 #movie_ids <- top50_movies$movie_id
