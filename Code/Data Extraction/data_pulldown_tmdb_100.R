@@ -28,9 +28,9 @@ library(tibble)
 ## (Optional) Clear old cached files if you're restarting completely
 ## unlink(c(
 ##   "seed_movies.qs", "movie_details_raw.qs", "movies_tbl.qs",
-##   "top50_movies.qs", "credits_raw.qs",
+##   "top100_movies.qs", "credits_raw.qs",
 ##   "genres_tbl.qs", "cast_full_tbl.qs", "directors_tbl.qs",
-##   "tmdb_1970_2024_top50_by_budget.qs"
+##   "tmdb_1970_2024_top100_by_budget.qs"
 ## ))
 
 ## 1. API setup ----
@@ -54,7 +54,7 @@ tmdb_get <- function(endpoint, query = list(), sleep = 0.25) {
 ## 2. Discover movies by year (seed set) ----
 years <- 1970:2024   # <--- your requested range
 
-get_seed_movies <- function(year, pages = 10) {
+get_seed_movies <- function(year, pages = 15) {
   message("Discovering movies for year: ", year)
   map_dfr(1:pages, function(p) {
     out <- tmdb_get(
@@ -127,16 +127,16 @@ movies_tbl <- details_list |>
 qsave(movies_tbl, "movies_tbl.qs")
 
 ## 4. Top 50 movies by budget per year ----
-top50_movies <- movies_tbl |>
+top100_movies <- movies_tbl |>
   filter(!is.na(year), year >= 1970, year <= 2024) |>
   filter((budget > 0) & (revenue > 0)) |>
   group_by(year) |>
-  slice_max(budget, n = 150, with_ties = FALSE) |>
+  slice_max(budget, n = 100, with_ties = FALSE) |>
   ungroup()
 
-#movie_ids <- top50_movies$movie_id
+#movie_ids <- top100_movies$movie_id
 
-qsave(top50_movies, "top50_movies.qs")
+qsave(top100_movies, "top100_movies.qs")
 
 ## 5. Genres (robust parsing) ----
 message("Extracting genres...")
@@ -184,8 +184,8 @@ get_credits <- function(id) {
 
 if (!file.exists("credits_raw.qs")) {
 credits_raw <- setNames(
-  map(top50_movies$movie_id, safely(get_credits)),
-  top50_movies$movie_id
+  map(top100_movies$movie_id, safely(get_credits)),
+  top100_movies$movie_id
 )
   
 qsave(credits_raw, "credits_raw.qs")
@@ -219,7 +219,7 @@ actors_tbl <- imap_dfr(
     billing_order = order,
     character
   ) |> 
-  filter(movie_id %in% top50_movies$movie_id)
+  filter(movie_id %in% top100_movies$movie_id)
 
 qsave(actors_tbl, "actors_tbl.qs")
 nrow(actors_tbl)
@@ -243,14 +243,14 @@ directors_tbl <- imap_dfr(
 ) |> 
   filter(job == "Director") |> 
   select(movie_id, director_id = id,director_name = name)|> 
-  filter(movie_id %in% top50_movies$movie_id)
+  filter(movie_id %in% top100_movies$movie_id)
 
 
 qsave(directors_tbl, "directors_tbl.qs")
 nrow(directors_tbl)
 
 ## 7. IP / franchise flags ----
-ip_tbl <- top50_movies |>
+ip_tbl <- top100_movies |>
   mutate(
     is_ip = !is.na(collection_id)
   ) |>
@@ -260,19 +260,19 @@ qsave(ip_tbl, "ip_tbl.qs")
 
 ## 8. Bundle everything into a single object ----
 tmdb_data <- list(
-  movies    = top50_movies,
+  movies    = top100_movies,
   genres    = genres_tbl,
   actors      = actors_tbl,
   directors = directors_tbl,
   ip        = ip_tbl
 )
 
-qsave(tmdb_data, "tmdb_1970_2024_top50_by_budget.qs")
+qsave(tmdb_data, "tmdb_1970_2024_top100_by_budget.qs")
 
-message("Done. Saved combined data to 'tmdb_1970_2024_top50_by_budget.qs'.")
+message("Done. Saved combined data to 'tmdb_1970_2024_top100_by_budget.qs'.")
 
 ## 9. (Optional) quick sanity checks ----
-# tmdb <- qread("tmdb_1970_2024_top50_by_budget.qs")
+# tmdb <- qread("tmdb_1970_2024_top100_by_budget.qs")
 # with(tmdb, nrow(movies))
 # with(tmdb, nrow(genres))
 # with(tmdb, nrow(cast))

@@ -471,3 +471,129 @@ timothee_chalamet_stats <- actors_var |>
   filter(actor_id == 1190668)
 head(timothee_chalamet_stats)
 ```
+
+Actors with the highest star power:
+
+```{r}
+actors_var |> 
+  group_by(actor_name) |> 
+  summarise(max_power = max(actor_star_power_prior)) |> 
+  slice_max(max_power, n = 20)
+```
+
+This seems to match intuition, these are all massive stars. Let's take a look at Harrison Ford's career trajectory:
+
+```{r}
+harrison_ford_stats <- actors_var |> 
+  filter(actor_name == "Harrison Ford")
+head(harrison_ford_stats)
+```
+
+```{r}
+harrison_ford_stats |> 
+  ggplot(aes(x = release_date)) +
+  geom_text(aes(y = actor_star_power_prior,label = title), vjust = -.5, size = 3) +
+  geom_line(aes(y = actor_star_power_prior)) +
+  geom_line(aes(y = actor_star_power_momentum))
+```
+
+Looking at will smith:
+
+```{r}
+will_smith_stats <- actors_var |> 
+  filter(actor_name == "Will Smith")
+head(will_smith_stats)
+```
+
+```{r}
+will_smith_stats |> 
+  ggplot(aes(x = release_date)) +
+  geom_text(aes(y = actor_star_power_prior,label = title), vjust = -.5, size = 3) +
+  geom_line(aes(y = actor_star_power_prior)) +
+  geom_line(aes(y = actor_star_power_momentum))
+```
+
+Let's take a look at the worst performing actors:
+
+```{r}
+actors_var |> 
+  group_by(actor_name) |> 
+  summarise(median_power = median(actor_star_power_prior), num_movies = n()) |> 
+  slice_min(median_power, n = 20)
+```
+
+Sean Connery having such low grades is odd, lets take a look.
+
+```{r}
+sean_connery_stats <- actors_var |> 
+  filter(actor_name == "Sean Connery")
+head(sean_connery_stats)
+```
+
+```{r}
+sean_connery_stats |> 
+  ggplot(aes(x = release_date)) +
+  geom_text(aes(y = actor_star_power_prior,label = title), vjust = -.5, size = 3) +
+  geom_line(aes(y = actor_star_power_prior)) +
+  geom_line(aes(y = actor_star_power_momentum))
+```
+
+Clearly missing James Bond movies here... seems a single movie might doom an actors scores a bit too harshly.
+
+There seems to be some poor record keeping of movies in this era, worth noting... the man who would be king is cited as having a revenue of 12678. That makes no sense, I'm seeing it took in 12 million. We may need to look at extreme values to validate figures or filter out the 70s movies.
+
+Michael Caine as well. Lets take a look:
+
+```{r}
+michael_caine_stats <- actors_var |> 
+  filter(actor_name == "Michael Caine")
+head(michael_caine_stats)
+```
+
+```{r}
+michael_caine_stats |> 
+  ggplot(aes(x = release_date)) +
+  geom_text(aes(y = actor_star_power_prior,label = title), vjust = -.5, size = 3) +
+  geom_line(aes(y = actor_star_power_prior)) +
+  geom_line(aes(y = actor_star_power_momentum))
+```
+
+A man who would be king once again takes a victim.
+
+# Investigating Large and Small Actor Residuals
+
+Before moving forward we need to take a look at large and small actor residuals to validate results.
+
+I'm going to start by looking at a boxplot by year to see if the number of outliers changes over time.
+
+```{r}
+df |>
+  ggplot(aes(x = year, y = resid_actor, group = year)) +
+  geom_boxplot()
+```
+
+There are a few huge outliers on the downside in the 70s, ill focus my analysis on those with residual \< -2.5.
+
+```{r}
+df |> 
+  filter(between(year, 1970, 1980)) |> 
+  filter(resid_actor < -2.5) |> 
+  arrange(resid_actor)
+```
+
+The man who would be king we already discussed, I'll take a look at a few of these.
+
+Duel, from sources it does not appear this had a major theatrical release... hence why revenue is reported as low as 2544.
+
+Attack of the helping hand is a 6 minute short...
+
+Clearly some of these are such small films that I don't think they should be included. I am going to consider filtering out the 70s due to the lack of data quantity and quality. Lets take a look at the 80s.
+
+```{r}
+outliers_80s <- df |> 
+  filter(between(year, 1980, 1990)) |> 
+  filter(resid_actor < -2.5) |> 
+  arrange(resid_actor) |> 
+  select(title, release_date, budget, revenue, profit, resid_actor)
+outliers_80s
+```
