@@ -669,3 +669,106 @@ These all seem super reasonable except Bad boys for life which released pre pand
 Overall these is a case to be made to filter out years with low numbers of films. Particularly the 70s (at least the early portion) and deal with the covid years in some way. The combination of iffy data, not many releases and in the covid years case many small releases complicate our analysis if we were to ignore them.
 
 However, since our interest is to analyze IP power vs star power over time it could be okay to just note this and continue forward.
+
+There is a way to filter on release type codes, if we filter on release type code 3 we can get only theatrical releases. This filters out TV specials, limited theatrical releases etc. I will look at this later on.
+
+# Bringing back to movie level
+
+```{r}
+actor_movie_prior <- actors_var |>
+  group_by(movie_id) |>
+  summarise(
+    # PRIOR (career stock entering this movie)
+    actor_power_prior_sum = sum(actor_star_power_prior, na.rm = TRUE),
+    actor_power_prior_max = max(actor_star_power_prior, na.rm = TRUE),
+
+    # MOMENTUM (recent heat entering this movie)
+    actor_momentum_prior_sum = sum(actor_star_power_momentum, na.rm = TRUE),
+    actor_momentum_prior_max = max(actor_star_power_momentum, na.rm = TRUE),
+
+    n_cast = n(),
+    .groups = "drop"
+  ) |>
+  mutate(
+    actor_power_prior_concentration =
+      actor_power_prior_max / actor_power_prior_sum
+  )
+```
+
+Adding back to the df table:
+
+```{r}
+df <- df |> 
+  left_join(actor_movie_prior, by = "movie_id") |> 
+  mutate(
+    actor_power_prior_concentration =
+      ifelse(is.finite(actor_power_prior_concentration),
+             actor_power_prior_concentration,
+             NA_real_)
+  )
+```
+
+Making the IP columns clear:
+
+```{r}
+df <- df |>
+  rename(
+    ip_power_evergreen_prior = ip_evergreen_prior,
+    ip_power_momentum_prior  = ip_momentum_prior
+  )
+```
+
+```{r}
+df |>
+  summarise(
+    missing_actor_sum = mean(is.na(actor_power_prior_sum)),
+    missing_ip_ever   = mean(is.na(ip_power_evergreen_prior)),
+    missing_ip_mom    = mean(is.na(ip_power_momentum_prior))
+  )
+```
+
+Fixing missing actor values:
+
+```{r}
+df <- df |>
+  mutate(
+    actor_power_prior_sum = coalesce(actor_power_prior_sum, 0),
+    actor_power_prior_max = coalesce(actor_power_prior_max, 0),
+    actor_momentum_prior_sum = coalesce(actor_momentum_prior_sum, 0),
+    actor_momentum_prior_max = coalesce(actor_momentum_prior_max, 0)
+  )
+```
+
+Checking that all first installments have zero IP power:
+
+```{r}
+df |>
+  filter(!is.na(collection_id), installment == 1) |>
+  summarise(
+    max_ip_evergreen = max(ip_power_evergreen_prior),
+    max_ip_momentum  = max(ip_power_momentum_prior)
+  )
+```
+
+Saving down tables:
+
+```{r}
+qsave(
+  df,
+  "D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Tables/df.qs"
+)
+qsave(ip_tbl, "D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Tables/ip_tbl.qs")
+
+qsave(actors_var, "D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Tables/actors_var.qs")
+```
+
+Saving down combined:
+
+```{r}
+modeling_data <- list(
+  movie_level_df    = df,
+  actor_level_df    = actors_var,
+  ip_level_df      = ip_tbl
+)
+qsave(modeling_data,"D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Combined/modeling_data.qs")
+```
