@@ -1,0 +1,332 @@
+---
+title: "Modeling"
+format: pdf
+editor: visual
+---
+
+# Loading Libraries and Data
+
+```{r}
+library(qs)
+library(tidyverse)
+library(mgcv)
+```
+
+```{r}
+modeling_data <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Combined/modeling_data.qs")
+names(modeling_data)
+```
+
+```{r}
+df <- modeling_data$movie_level_df
+head(df)
+```
+
+# Response Variable Analysis
+
+```{r}
+df |> 
+  ggplot(aes(x = log_profitability)) +
+  geom_density()
+```
+
+We have a relatively symmetrical distribution centered around 0. There is a long left tail, and the distribution is peaked.
+
+### Comparison to normal distribution
+
+```{r}
+mu <- mean(df$log_profitability)
+sigma <- sd(df$log_profitability)
+mu;sigma
+```
+
+```{r}
+ggplot(df, aes(x = log_profitability)) +
+  geom_density(
+    aes(y = after_stat(density)),
+    linewidth = 1,
+    color = "black"
+  ) +
+  stat_function(
+    fun = dnorm,
+    args = list(mean = mu, sd = sigma),
+    linewidth = 1,
+    linetype = "dashed",
+    color = "red"
+  ) + labs(
+    title = "Log Profitability: Empirical Density vs Normal",
+    subtitle = sprintf("Normal(mean = %.2f, sd = %.2f)", mu, sigma),
+    x = "log_profitability",
+    y = "Density"
+  ) +
+  theme_minimal()
+```
+
+As previously stated the empirical density is more peaked than the normal density. Less mass in the start of each tail but the length of tails are quite similar.
+
+This plot indicates that the log_profitability response is close to the normal distribution, which will likely be helpful in future steps.
+
+```{r}
+qqnorm(df$log_profitability)
+qqline(df$log_profitability, col = "red")
+```
+
+In the qqplot we can see that the tails are longer than the normal distribution would suggest, particularly for negative outliers.
+
+For now we pocket this information, as it would be helpful especially if we were to create a predictive model and want to create prediction intervals.
+
+# Modeling
+
+## Baseline Model
+
+First I will start with a model that only uses budget and year.
+
+```{r}
+baseline_fit <- lm(log_profitability ~ log_budget + year, data = df)
+summary(baseline_fit)
+```
+
+When adjusted for budget year does not have a statistically significant relationship. However the crux of our research question is based on how our coefficients change with time, so we leave that in for now.
+
+```{r}
+plot(baseline_fit)
+```
+
+In the residuals vs fitted plot we see that most points are grouped around zero, so that looks okay.
+
+In the QQ plot we see that it managed to adjust well for positive outliers, but there is a longer left tail. There are more movie bombs than the normality assumption would suggest.
+
+In the scale location plot we see that most points are blobbed together, a slight trend appears when averaged but it does not seem visually perceptible.
+
+Lets take a look at residuals vs year.
+
+```{r}
+baseline_residuals <- resid(baseline_fit)
+plot(x = df$year, y = baseline_residuals)
+```
+
+No obvious trend remains.
+
+```{r}
+baseline_residuals <- resid(baseline_fit)
+plot(x = df$log_budget, y = baseline_residuals)
+```
+
+No obvious trend remains (probably worth taking a look at where log budget is close to zero)
+
+```{r}
+df |> filter(log_budget < 5)
+```
+
+Okay this could use being removed, neither the budget or revenue will be helpful for us.
+
+```{r}
+df <- df |> 
+  filter(log_budget > 5)
+```
+
+```{r}
+baseline_fit <- lm(log_profitability ~ log_budget + year, data = df)
+summary(baseline_fit)
+```
+
+```{r}
+baseline_residuals <- resid(baseline_fit)
+plot(x = df$log_budget, y = baseline_residuals)
+```
+
+There is no obvious trend that remains.
+
+Lets add the IP fields.
+
+## Baseline Model + IP
+
+```{r}
+ip_fit <- lm(log_profitability ~ log_budget + year + ip_power_evergreen_prior +
+                 ip_power_momentum_prior, data = df)
+summary(ip_fit)
+```
+
+Both IP evergreen power and IP momentum power are significant.
+
+```{r}
+BIC(ip_fit);BIC(baseline_fit)
+```
+
+BIC dropped which indicates a better fit.
+
+Both terms are positive, indicating that IP relevance and IP momentum are associated with higher profits and more successful films.
+
+```{r}
+plot(ip_fit)
+```
+
+Residuals vs fitted are centered around zero.
+
+The QQ plot looks similar, still have issues in the left tail.
+
+The scale location plot looks straight.
+
+No super concerning outliers.
+
+## Adding Actor Variables
+
+```{r}
+actor_ip_fit <- lm(log_profitability ~ log_budget + year + 
+                  ip_power_evergreen_prior+ ip_power_momentum_prior
+                   + actor_momentum_prior_sum + actor_power_prior_sum, data = df)
+summary(actor_ip_fit)
+```
+
+We can see that actor momentum is associated with movies getting higher profit, this is statistically significant. On the other hand actor power prior, our static term which looks at an actors lifetime contributions up to the time of the movie is not statistically significant.
+
+```{r}
+BIC(actor_ip_fit);BIC(ip_fit)
+```
+
+BIC improves, which indicates this model is a better fit.
+
+```{r}
+plot(actor_ip_fit)
+```
+
+Everything looks good.
+
+For simplicity I will remove the power prior sum and stick with the momentum prior sum as that is supported by the data.
+
+```{r}
+actor_ip_simple_fit <- lm(log_profitability ~ log_budget + year + 
+                  ip_power_evergreen_prior+ ip_power_momentum_prior
+                   + actor_momentum_prior_sum, data = df)
+summary(actor_ip_simple_fit)
+```
+
+```{r}
+BIC(actor_ip_fit);BIC(actor_ip_simple_fit)
+```
+
+The simple fit helped our BIC drop further, so I'll stick with that for now. It also gives us an interesting result, movie success depends more on what an actor has done recently than their lifetime performance.
+
+## Interacting year with Actor and IP power
+
+For simplicity I will remove the power prior sum and stick with the momentum prior sum as that is supported by the data.
+
+```{r}
+interaction_fit <- lm(log_profitability ~ log_budget + year + 
+                  ip_power_evergreen_prior+ ip_power_momentum_prior
+                   + actor_momentum_prior_sum +
+                  ip_power_evergreen_prior:year + ip_power_momentum_prior:year +
+                    actor_momentum_prior_sum:year,
+                  data = df)
+summary(interaction_fit)
+```
+
+We can see that none of the interaction terms are significant... lets take a look at the relationship using a non-parametric method.
+
+## Non Parametric Method
+
+Centering year:
+
+```{r}
+df <- df |> 
+  mutate(
+    year_c = year - mean(year)
+  )
+```
+
+Fitting model:
+
+```{r}
+tvc_mod <- gam(
+  log_profitability ~
+    log_budget +
+    factor(year) +              # or smooth(year) if you prefer
+    s(year_c, by = ip_power_momentum_prior, k = 10) +
+    s(year_c, by = actor_momentum_prior_sum, k = 10),
+  data = df,
+  method = "REML"
+)
+summary(tvc_mod)
+```
+
+```{r}
+plot(
+  tvc_mod,
+  select = 1,
+  shade = TRUE,
+  main = "Time-Varying Effect of IP Power"
+)
+
+plot(
+  tvc_mod,
+  select = 2,
+  shade = TRUE,
+  main = "Time-Varying Effect of Actor Power"
+)
+```
+
+This non-parametric method suggests there may be a quadratic relationship between actor momentum and year. Lets try adding that to our model:
+
+## Quadratic Fit
+
+```{r}
+quadratic_fit <- lm(log_profitability ~ log_budget + year + 
+                  ip_power_evergreen_prior+ ip_power_momentum_prior
+                   + actor_momentum_prior_sum +
+                  ip_power_evergreen_prior:year + ip_power_momentum_prior:year +
+                    actor_momentum_prior_sum:year + 
+                    actor_momentum_prior_sum:I(year^2),
+                  data = df)
+summary(quadratic_fit)
+```
+
+That term is close to significant. Lets start to weed down our model a bit to get something simpler to analyze.
+
+```{r}
+quadratic_fit_simplier_1 <- lm(log_profitability ~ log_budget + year + 
+                  ip_power_evergreen_prior+ ip_power_momentum_prior
+                   + actor_momentum_prior_sum +
+                   ip_power_momentum_prior:year +
+                    actor_momentum_prior_sum:year + 
+                    actor_momentum_prior_sum:I(year^2),
+                  data = df)
+summary(quadratic_fit_simplier_1)
+```
+
+```{r}
+BIC(quadratic_fit);BIC(interaction_fit);BIC(quadratic_fit_simplier_1)
+```
+
+We can see that the quadratic fit that removed the interaction between year and ip power evergreen improved the fit. Lets see if adding a cubic term to actor momentum will change things.
+
+```{r}
+cubic_fit <- lm(log_profitability ~ log_budget + year + 
+                  ip_power_evergreen_prior+ ip_power_momentum_prior
+                   + actor_momentum_prior_sum +
+                   ip_power_momentum_prior:year +
+                    actor_momentum_prior_sum:year + 
+                    actor_momentum_prior_sum:I(year^2) +
+                  actor_momentum_prior_sum:I(year^3),
+                  data = df)
+summary(cubic_fit)
+```
+
+What does effect look like in this model:
+
+```{r}
+cubic_coefficents <- coef(cubic_fit)
+year <- 1970:2024
+effect <- cubic_coefficents[6] + cubic_coefficents[8]*year + 
+  cubic_coefficents[9]*year^2 + cubic_coefficents[10]*year^3
+plot(year, effect)
+```
+
+What did the quadratic effect look like?
+
+```{r}
+quadratic_coefficents <- coef(quadratic_fit)
+year <- 1970:2024
+effect <- quadratic_coefficents[6] + quadratic_coefficents[9]*year + 
+  quadratic_coefficents[10]*year^2
+plot(year, effect)
+```

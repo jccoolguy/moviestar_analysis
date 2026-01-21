@@ -678,13 +678,19 @@ There is a way to filter on release type codes, if we filter on release type cod
 actor_movie_prior <- actors_var |>
   group_by(movie_id) |>
   summarise(
-    # PRIOR (career stock entering this movie)
-    actor_power_prior_sum = sum(actor_star_power_prior, na.rm = TRUE),
-    actor_power_prior_max = max(actor_star_power_prior, na.rm = TRUE),
+    # PRIOR (career stock entering movie), billing-weighted
+    actor_power_prior_sum =
+      sum(actor_star_power_prior * billing_weight, na.rm = TRUE),
 
-    # MOMENTUM (recent heat entering this movie)
-    actor_momentum_prior_sum = sum(actor_star_power_momentum, na.rm = TRUE),
-    actor_momentum_prior_max = max(actor_star_power_momentum, na.rm = TRUE),
+    actor_power_prior_max =
+      max(actor_star_power_prior, na.rm = TRUE),
+
+    # MOMENTUM (recent heat entering movie), billing-weighted
+    actor_momentum_prior_sum =
+      sum(actor_star_power_momentum * billing_weight, na.rm = TRUE),
+
+    actor_momentum_prior_max =
+      max(actor_star_power_momentum, na.rm = TRUE),
 
     n_cast = n(),
     .groups = "drop"
@@ -698,13 +704,13 @@ actor_movie_prior <- actors_var |>
 Adding back to the df table:
 
 ```{r}
-df <- df |> 
-  left_join(actor_movie_prior, by = "movie_id") |> 
+df <- df |>
+  left_join(actor_movie_prior, by = "movie_id") |>
   mutate(
-    actor_power_prior_concentration =
-      ifelse(is.finite(actor_power_prior_concentration),
-             actor_power_prior_concentration,
-             NA_real_)
+    actor_power_prior_sum =
+      coalesce(actor_power_prior_sum, 0),
+    actor_momentum_prior_sum =
+      coalesce(actor_momentum_prior_sum, 0)
   )
 ```
 
@@ -771,4 +777,10 @@ modeling_data <- list(
   ip_level_df      = ip_tbl
 )
 qsave(modeling_data,"D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Combined/modeling_data.qs")
+```
+
+Saving as csv:
+
+```{r}
+write.csv(df,"D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Tables/df.csv")
 ```
