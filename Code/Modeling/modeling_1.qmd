@@ -10,6 +10,7 @@ editor: visual
 library(qs)
 library(tidyverse)
 library(mgcv)
+library(tvReg)
 ```
 
 ```{r}
@@ -265,7 +266,59 @@ plot(
 )
 ```
 
-This non-parametric method suggests there may be a quadratic relationship between actor momentum and year. Lets try adding that to our model:
+```{r}
+library(gratia)
+library(dplyr)
+library(ggplot2)
+
+# 1) Create a grid of years to evaluate on
+yr_grid <- tibble(year_c = seq(min(df$year_c, na.rm=TRUE),
+                              max(df$year_c, na.rm=TRUE),
+                              length.out = 200))
+
+# 2) Extract smooth estimates on the same grid
+# NOTE: use the smooth labels from your model.
+# From your plot labels, they look like:
+#   s(year_c, by = ip_power_momentum_prior)
+#   s(year_c, by = actor_momentum_prior_sum)
+
+ip_s  <- smooth_estimates(tvc_mod,
+                          smooth = "s(year_c):ip_power_momentum_prior",
+                          newdata = yr_grid)
+
+act_s <- smooth_estimates(tvc_mod,
+                          smooth = "s(year_c):actor_momentum_prior_sum",
+                          newdata = yr_grid)
+
+# 3) Join + compute dominance Δ(t)
+dom <- ip_s %>%
+  select(year_c, ip_est = .estimate, ip_se = .se) %>%
+  left_join(
+    act_s %>% select(year_c, act_est = .estimate, act_se = .se),
+    by = "year_c"
+  ) %>%
+  mutate(
+    dom_est = ip_est - act_est,
+    dom_se  = sqrt(ip_se^2 + act_se^2),  # conservative (ignores covariance)
+    dom_lo  = dom_est - 1.96 * dom_se,
+    dom_hi  = dom_est + 1.96 * dom_se
+  )
+
+# 4) Plot
+ggplot(dom, aes(x = year_c, y = dom_est)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_ribbon(aes(ymin = dom_lo, ymax = dom_hi), alpha = 0.25) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Relative Dominance Over Time: IP vs Actor Power",
+    subtitle = expression(Delta(t)==beta[IP](t)-beta[Actor](t)),
+    x = "year_c",
+    y = expression(Delta(t))
+  ) +
+  theme_minimal()
+```
+
+This non-parametric method suggests there may be a quadratic relationship between actor momentum and year. Lets try adding that to our model.
 
 ## Quadratic Fit
 
@@ -329,4 +382,234 @@ year <- 1970:2024
 effect <- quadratic_coefficents[6] + quadratic_coefficents[9]*year + 
   quadratic_coefficents[10]*year^2
 plot(year, effect)
+```
+
+## What if we treated each year as a fixed effect
+
+```{r}
+quadratic_fixed_fit <- lm(log_profitability ~ log_budget + factor(year) + 
+                  ip_power_evergreen_prior+ ip_power_momentum_prior
+                   + actor_momentum_prior_sum +
+                  ip_power_evergreen_prior:year + ip_power_momentum_prior:year +
+                    actor_momentum_prior_sum:year + 
+                    actor_momentum_prior_sum:I(year^2),
+                  data = df)
+summary(quadratic_fixed_fit)
+```
+
+```{r}
+quadratic_fixed_coefficents <- coef(quadratic_fixed_fit)
+year <- 1970:2024
+effect <- quadratic_coefficents[6] + quadratic_coefficents[9]*year + 
+  quadratic_coefficents[10]*year^2
+plot(year, effect)
+```
+
+With year as a fixed effect we do get significance for our quadratic term.
+
+## TVreg
+
+Quick look at another non-parametric method, a time varying coefficient model.
+
+```{r}
+df_tv <- df |>
+  dplyr::select(
+    log_profitability,
+    ip_power_evergreen_prior,
+    actor_momentum_prior_sum,
+    budget,
+    year
+  ) |>
+  dplyr::mutate(
+    log_budget = log(budget),
+    year_c = year - min(year)
+  ) |>
+  na.omit()
+head(df_tv)
+```
+
+```{r}
+tv_mod <- tvLM(
+  log_profitability ~
+    log_budget +
+    ip_power_evergreen_prior +
+    actor_momentum_prior_sum,
+  z = df_tv$year_c,
+  data = df_tv,
+  bw = 0.3
+)
+```
+
+```{r}
+coefs <- tv_mod$coefficients
+ylim  <- range(coefs[is.finite(coefs)])
+
+plot(
+  tv_mod,
+  ylim = c(-5,5),
+  main = "Time-Varying Coefficients"
+)
+
+```
+
+## Checking on constant nature of actor momentum
+
+```{r}
+df |> 
+  ggplot(aes(x = year, y = actor_momentum_prior_sum, group = year)) +
+  geom_boxplot()
+```
+
+What if we center scaled on each year?
+
+```{r}
+df <- df |> 
+  group_by(year) |> 
+  mutate(
+    actor_momentum_prior_sum_z = (actor_momentum_prior_sum - mean(actor_momentum_prior_sum))/sd(actor_momentum_prior_sum),
+    ip_power_momentum_prior_z = 
+      (ip_power_momentum_prior - mean(ip_power_momentum_prior))
+    /sd(ip_power_momentum_prior)
+  ) |> 
+  ungroup()
+```
+
+```{r}
+df |> 
+  ggplot(aes(x = year, y = actor_momentum_prior_sum_z, group = year)) +
+  geom_boxplot()
+```
+
+This way we can focus on how the effect changes because we are center and scaling our variable on each year.
+
+```{r}
+tv_mod <- tvLM(
+  log_profitability ~
+    log_budget +
+    ip_power_momentum_prior +
+    actor_momentum_prior_sum_z,
+  z = df_tv$year_c,
+  data = df,
+  bw = 0.1
+)
+```
+
+```{r}
+plot(
+  tv_mod,
+  ylim = c(-1,1),
+  main = "Time-Varying Coefficients"
+)
+```
+
+Lets refit our quadratic fit:
+
+```{r}
+quadratic_scaled_fit <- lm(log_profitability ~ log_budget + year + 
+                  ip_power_evergreen_prior+ ip_power_momentum_prior_z
+                   + actor_momentum_prior_sum_z +
+                   ip_power_momentum_prior_z:year +
+                    actor_momentum_prior_sum_z:year + 
+                    actor_momentum_prior_sum_z:I(year^2),
+                  data = df)
+summary(quadratic_scaled_fit)
+```
+
+```{r}
+quadratic_scaled_coefficents <- coef(quadratic_scaled_fit)
+year <- 1970:2024
+effect <- quadratic_scaled_coefficents[6] + quadratic_scaled_coefficents[8]*year + 
+  quadratic_coefficents[9]*year^2
+plot(year, effect)
+```
+
+Cubic scaled fit:
+
+```{r}
+cubic_scaled_fit <- lm(log_profitability ~ log_budget + year + 
+                  ip_power_evergreen_prior+ ip_power_momentum_prior_z
+                   + actor_momentum_prior_sum_z +
+                   ip_power_momentum_prior_z:year +
+                    actor_momentum_prior_sum_z:year + 
+                    actor_momentum_prior_sum_z:I(year^2) +
+                    actor_momentum_prior_sum_z:I(year^3),
+                  data = df)
+summary(cubic_scaled_fit)
+```
+
+```{r}
+cubic_scaled_coefficents <- coef(cubic_scaled_fit)
+year <- 1970:2024
+effect <- cubic_scaled_coefficents[6] + cubic_scaled_coefficents[9]*year + 
+  cubic_coefficents[9]*year^2 + cubic_coefficents[9]*year^3
+plot(year, effect)
+```
+
+## GAM fit 2
+
+```{r}
+tvc_scaled_mod <- gam(
+  log_profitability ~
+    log_budget +
+    smooth(year) +              # or smooth(year) if you prefer
+    s(year_c, by = ip_power_momentum_prior, k = 10) +
+    s(year_c, by = actor_momentum_prior_sum_z, k = 10),
+  data = df,
+  method = "REML"
+)
+summary(tvc_scaled_mod)
+```
+
+```{r}
+plot(
+  tvc_scaled_mod,
+  select = 1,
+  shade = TRUE,
+  main = "Time-Varying Effect of IP Power"
+)
+
+plot(
+  tvc_scaled_mod,
+  select = 2,
+  shade = TRUE,
+  main = "Time-Varying Effect of Actor Power",
+  ylim = c(-.1,.4)
+)
+```
+
+## What if we excluded 2020-2024
+
+```{r}
+df_no_covid <- df |> 
+  filter(year < 2020) |> 
+  mutate(year_c = year - mean(year))
+```
+
+```{r}
+tvc_no_covid_mod <- gam(
+  log_profitability ~
+    log_budget +
+    smooth(year) +              # or smooth(year) if you prefer
+    s(year_c, by = ip_power_momentum_prior, k = 10) +
+    s(year_c, by = actor_momentum_prior_sum_z, k = 10),
+  data = df_no_covid,
+  method = "REML"
+)
+summary(tvc_no_covid_mod)
+```
+
+```{r}
+plot(
+  tvc_no_covid_mod,
+  select = 1,
+  shade = TRUE,
+  main = "Time-Varying Effect of IP Power"
+)
+
+plot(
+  tvc_no_covid_mod,
+  select = 2,
+  shade = TRUE,
+  main = "Time-Varying Effect of Actor Power"
+)
 ```
