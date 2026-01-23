@@ -1,0 +1,48 @@
+---
+title: "Checking on returning actors"
+format: html
+editor: visual
+---
+
+# Libraries and Loading Data
+
+```{r}
+library(tidyverse)
+library(qs)
+```
+
+```{r}
+modeling_data <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Combined/modeling_data.qs")
+names(modeling_data)
+```
+
+```{r}
+actor_df <- modeling_data$actor_level_df
+ip_df <- modeling_data$ip_level_df
+movie_df <- modeling_data$movie_level_df
+```
+
+Quick left join to get data:
+
+```{r}
+actor_df <- actor_df |>
+  left_join(movie_df |> select(movie_id,collection_id,collection_name, 
+                               installment, profit),"movie_id")
+head(actor_df)
+```
+
+```{r}
+actor_df |>
+  group_by(actor_name, collection_id) |>
+  filter(!is.na(collection_id)) |> 
+  summarise(
+    first_installment = min(installment),
+    mean_contrib = mean(actor_var_contribution, na.rm = TRUE),
+    mean_proft = mean(profit),
+    .groups = "drop"
+  ) |>
+  filter(first_installment == 1, mean_contrib < 0) |> 
+  left_join(movie_df |> select(collection_id,collection_name),"collection_id") |> 
+  arrange(desc(mean_profit))
+
+```
