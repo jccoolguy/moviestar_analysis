@@ -242,8 +242,8 @@ tvc_mod <- gam(
   log_profitability ~
     log_budget +
     factor(year) +              # or smooth(year) if you prefer
-    s(year_c, by = ip_power_momentum_prior, k = 10) +
-    s(year_c, by = actor_momentum_prior_sum, k = 10),
+    s(year_c, by = ip_power_momentum_prior) +
+    s(year_c, by = actor_momentum_prior_sum),
   data = df,
   method = "REML"
 )
