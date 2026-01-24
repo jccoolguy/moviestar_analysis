@@ -577,6 +577,53 @@ plot(
 )
 ```
 
+```{r}
+yr_grid <- tibble(year_c = seq(min(df$year_c, na.rm=TRUE),
+                              max(df$year_c, na.rm=TRUE),
+                              length.out = 200))
+
+# 2) Extract smooth estimates on the same grid
+# NOTE: use the smooth labels from your model.
+# From your plot labels, they look like:
+#   s(year_c, by = ip_power_momentum_prior)
+#   s(year_c, by = actor_momentum_prior_sum)
+
+ip_s  <- smooth_estimates(tvc_scaled_mod,
+                          smooth = "s(year_c):ip_power_momentum_prior",
+                          newdata = yr_grid)
+
+act_s <- smooth_estimates(tvc_scaled_mod,
+                          smooth = "s(year_c):actor_momentum_prior_sum_z",
+                          newdata = yr_grid)
+
+# 3) Join + compute dominance Δ(t)
+dom <- ip_s %>%
+  select(year_c, ip_est = .estimate, ip_se = .se) %>%
+  left_join(
+    act_s %>% select(year_c, act_est = .estimate, act_se = .se),
+    by = "year_c"
+  ) %>%
+  mutate(
+    dom_est = ip_est - act_est,
+    dom_se  = sqrt(ip_se^2 + act_se^2),  # conservative (ignores covariance)
+    dom_lo  = dom_est - 1.96 * dom_se,
+    dom_hi  = dom_est + 1.96 * dom_se
+  )
+
+# 4) Plot
+ggplot(dom, aes(x = year_c, y = dom_est)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_ribbon(aes(ymin = dom_lo, ymax = dom_hi), alpha = 0.25) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Relative Dominance Over Time: IP vs Actor Power",
+    subtitle = expression(Delta(t)==beta[IP](t)-beta[Actor](t)),
+    x = "year_c",
+    y = expression(Delta(t))
+  ) +
+  theme_minimal()
+```
+
 ## What if we excluded 2020-2024
 
 ```{r}
