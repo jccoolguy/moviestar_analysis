@@ -5,23 +5,293 @@ format: pdf
 editor: visual
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+# Loading Libraries
 
 ```{r}
-1 + 1
+library(qs)
+library(tidyverse)
+library(mgcv)
+library(tvReg)
 ```
 
-You can add options to executable code like this
+# Loading Data
 
 ```{r}
-#| echo: false
-2 * 2
+modeling_data <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Combined/modeling_data.qs")
+names(modeling_data)
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+```{r}
+df <- modeling_data$movie_level_df
+head(df)
+```
+
+# GAM Model
+
+First we need to center the year variable:
+
+```{r}
+df <- df |> 
+  mutate(
+    year_c = year - mean(year)
+  )
+```
+
+```{r}
+tvc_mod <- gam(
+  log_profitability ~
+    log_budget +
+    factor(year) +              # or smooth(year) if you prefer
+    s(year_c, by = ip_power_momentum_prior) +
+    s(year_c, by = actor_momentum_prior_sum),
+  data = df,
+  method = "REML"
+)
+summary(tvc_mod)
+```
+
+```{r}
+plot(
+  tvc_mod,
+  select = 1,
+  shade = TRUE,
+  main = "Time-Varying Effect of IP Power"
+)
+
+plot(
+  tvc_mod,
+  select = 2,
+  shade = TRUE,
+  main = "Time-Varying Effect of Actor Power"
+)
+```
+
+# Filtering out years \>= 1980
+
+```{r}
+df_less <- df |> 
+  filter(year >= 1972) |> 
+    mutate(
+    year_c = year - mean(year)
+  )
+head(df_less)
+```
+
+```{r}
+tvc_less_mod <- gam(
+  log_profitability ~
+    log_budget +
+    smooth(year) +              # or smooth(year) if you prefer
+    s(year_c, by = ip_power_momentum_prior, k = 10) +
+    s(year_c, by = actor_momentum_prior_sum, k = 10),
+  data = df_less,
+  method = "REML"
+)
+summary(tvc_less_mod)
+```
+
+```{r}
+plot(
+  tvc_less_mod,
+  select = 1,
+  shade = TRUE,
+  main = "Time-Varying Effect of IP Power"
+)
+
+plot(
+  tvc_less_mod,
+  select = 2,
+  shade = TRUE,
+  main = "Time-Varying Effect of Actor Power"
+)
+```
+
+# Standardize Globally
+
+```{r}
+df <- df |>
+  mutate(
+    ip_z    = as.numeric(scale(ip_power_momentum_prior)),
+    actor_z = as.numeric(scale(actor_momentum_sum)),
+    year_c  = year - mean(year),
+    log_budget = log(budget)
+  )
+
+```
+
+```{r}
+library(mgcv)
+
+tvc_mod <- gam(
+  log_profitability ~
+    log_budget +
+    #year_c +
+    s(year_c, by = ip_z, k = 10)
+    s(year_c, by = actor_z, k = 10),
+  data = df,
+  method = "REML"
+)
+
+```
+
+```{r}
+summary(tvc_mod)
+```
+
+```{r}
+plot(
+  tvc_mod,
+  select = 1,
+  shade = TRUE,
+  main = "Time-Varying Effect of IP Power"
+)
+
+plot(
+  tvc_mod,
+  select = 2,
+  shade = TRUE,
+  main = "Time-Varying Effect of Actor Power"
+)
+```
+
+```{r}
+library(gratia)
+yr_grid <- tibble(year_c = seq(min(df$year_c, na.rm=TRUE),
+                              max(df$year_c, na.rm=TRUE),
+                              length.out = 200))
+
+# 2) Extract smooth estimates on the same grid
+# NOTE: use the smooth labels from your model.
+# From your plot labels, they look like:
+#   s(year_c, by = ip_power_momentum_prior)
+#   s(year_c, by = actor_momentum_prior_sum)
+
+ip_s  <- smooth_estimates(tvc_mod,
+                          smooth = "s(year_c):ip_z",
+                          newdata = yr_grid)
+
+act_s <- smooth_estimates(tvc_mod,
+                          smooth = "s(year_c):actor_z",
+                          newdata = yr_grid)
+
+# 3) Join + compute dominance Δ(t)
+dom <- ip_s %>%
+  select(year_c, ip_est = .estimate, ip_se = .se) %>%
+  left_join(
+    act_s %>% select(year_c, act_est = .estimate, act_se = .se),
+    by = "year_c"
+  ) %>%
+  mutate(
+    dom_est = ip_est - act_est,
+    dom_se  = sqrt(ip_se^2 + act_se^2),  # conservative (ignores covariance)
+    dom_lo  = dom_est - 1.96 * dom_se,
+    dom_hi  = dom_est + 1.96 * dom_se
+  )
+
+# 4) Plot
+ggplot(dom, aes(x = year_c, y = dom_est)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_ribbon(aes(ymin = dom_lo, ymax = dom_hi), alpha = 0.25) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Relative Dominance Over Time: IP vs Actor Power",
+    subtitle = expression(Delta(t)==beta[IP](t)-beta[Actor](t)),
+    x = "year_c",
+    y = expression(Delta(t))
+  ) +
+  theme_minimal()
+```
+
+# Excluding Covid?
+
+```{r}
+df_no_covid <- df |> 
+  filter(!between(year,2020,2021)) |>
+    mutate(
+    ip_z    = as.numeric(scale(ip_power_momentum_prior)),
+    actor_z = as.numeric(scale(actor_momentum_prior_sum)),
+    year_c  = year - mean(year),
+    log_budget = log(budget)
+  )
+
+```
+
+```{r}
+tvc_no_covid_mod <- gam(
+  log_profitability ~
+    log_budget +
+    #year_c +
+    s(year_c, by = ip_z, k = 10) +
+    s(year_c, by = actor_z, k = 10),
+  data = df_no_covid,
+  method = "REML"
+)
+```
+
+```{r}
+summary(tvc_no_covid_mod)
+```
+
+```{r}
+plot(
+  tvc_no_covid_mod,
+  select = 1,
+  shade = TRUE,
+  main = "Time-Varying Effect of IP Power"
+)
+
+plot(
+  tvc_no_covid_mod,
+  select = 2,
+  shade = TRUE,
+  main = "Time-Varying Effect of Actor Power"
+)
+```
+
+```{r}
+library(gratia)
+yr_grid <- tibble(year_c = seq(min(df_no_covid$year_c, na.rm=TRUE),
+                              max(df_no_covid$year_c, na.rm=TRUE),
+                              length.out = 200))
+
+# 2) Extract smooth estimates on the same grid
+# NOTE: use the smooth labels from your model.
+# From your plot labels, they look like:
+#   s(year_c, by = ip_power_momentum_prior)
+#   s(year_c, by = actor_momentum_prior_sum)
+
+ip_s  <- smooth_estimates(tvc_mod,
+                          smooth = "s(year_c):ip_z",
+                          newdata = yr_grid)
+
+act_s <- smooth_estimates(tvc_mod,
+                          smooth = "s(year_c):actor_z",
+                          newdata = yr_grid)
+
+# 3) Join + compute dominance Δ(t)
+dom <- ip_s %>%
+  select(year_c, ip_est = .estimate, ip_se = .se) %>%
+  left_join(
+    act_s %>% select(year_c, act_est = .estimate, act_se = .se),
+    by = "year_c"
+  ) %>%
+  mutate(
+    dom_est = ip_est - act_est,
+    dom_se  = sqrt(ip_se^2 + act_se^2),  # conservative (ignores covariance)
+    dom_lo  = dom_est - 1.96 * dom_se,
+    dom_hi  = dom_est + 1.96 * dom_se
+  )
+
+# 4) Plot
+ggplot(dom, aes(x = year_c, y = dom_est)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_ribbon(aes(ymin = dom_lo, ymax = dom_hi), alpha = 0.25) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Relative Dominance Over Time: IP vs Actor Power",
+    subtitle = expression(Delta(t)==beta[IP](t)-beta[Actor](t)),
+    x = "year_c",
+    y = expression(Delta(t))
+  ) +
+  theme_minimal()
+```
