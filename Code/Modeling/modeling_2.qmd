@@ -221,8 +221,10 @@ tvc_no_covid_mod <- gam(
   log_profitability ~
     log_budget +
     #year_c +
-    s(year_c, by = ip_z, k = 10) +
-    s(year_c, by = actor_z, k = 10),
+   # ip_power_evergreen_prior +
+    s(year_c, k = 10) +
+    s(year_c, by = ip_z, k = 15) +
+    s(year_c, by = actor_z, k = 15),
   data = df_no_covid,
   method = "REML"
 )
@@ -260,11 +262,11 @@ yr_grid <- tibble(year_c = seq(min(df_no_covid$year_c, na.rm=TRUE),
 #   s(year_c, by = ip_power_momentum_prior)
 #   s(year_c, by = actor_momentum_prior_sum)
 
-ip_s  <- smooth_estimates(tvc_mod,
+ip_s  <- smooth_estimates(tvc_no_covid_mod,
                           smooth = "s(year_c):ip_z",
                           newdata = yr_grid)
 
-act_s <- smooth_estimates(tvc_mod,
+act_s <- smooth_estimates(tvc_no_covid_mod,
                           smooth = "s(year_c):actor_z",
                           newdata = yr_grid)
 
@@ -294,4 +296,44 @@ ggplot(dom, aes(x = year_c, y = dom_est)) +
     y = expression(Delta(t))
   ) +
   theme_minimal()
+```
+
+```{r}
+plot(tvc_no_covid_mod)
+```
+
+```{r}
+gam.check(tvc_no_covid_mod)
+```
+
+```{r}
+gam.check(tvc_no_covid_mod)
+par(mfrow = c(2,2))
+plot(tvc_mod, pages = 1, residuals = TRUE, pch = 16, cex = 0.4)
+par(mfrow = c(1,1))
+```
+
+```{r}
+r <- residuals(tvc_no_covid_mod, type = "deviance")
+f <- fitted(tvc_no_covid_mod)
+
+plot(f, r, pch = 16, cex = 0.4,
+     xlab = "Fitted values", ylab = "Deviance residuals")
+abline(h = 0, lty = 2)
+```
+
+```{r}
+plot(df_no_covid$year, r, pch = 16, cex = 0.4,
+     xlab = "Year", ylab = "Deviance residuals")
+abline(h = 0, lty = 2)
+```
+
+```{r}
+plot(log(df_no_covid$budget), r, pch = 16, cex = 0.4,
+     xlab = "log(Budget)", ylab = "Deviance residuals")
+abline(h = 0, lty = 2)
+```
+
+```{r}
+concurvity(tvc_mod, full = TRUE)
 ```
