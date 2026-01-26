@@ -13,10 +13,13 @@ library(qs)
 library(tidyverse)
 library(mgcv)
 library(tvReg)
+library(ggrepel)
+library(ggthemes)
 ```
 
 ```{r}
 modeling_data <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Combined/modeling_data.qs")
+movie_df <- modeling_data$movie_level_df
 ```
 
 # Research Motivation & Question
@@ -39,6 +42,29 @@ For each film, the dataset includes information on release date, production budg
 
 Two core challenges in this analysis are defining star power within a cast and separating it from the pull of established franchises. When a movie performs well at the box office, it is not always obvious why. Is the success driven by the lead actor, or is the film benefiting from being part of a popular series with a built-in audience?
 
-The same ambiguity exists on the downside. When a film underperforms, it is unclear whether that outcome reflects weak audience interest in the cast, poor execution, ... or simply the limits of a franchise that audiences were never particularly excited about in the first place.
+The same ambiguity exists on the downside. When a film underperforms, it is unclear whether that outcome reflects weak audience interest in the cast, poor execution, or simply the limits of a franchise that audiences were never particularly excited about in the first place.
 
-These challenges make it necessary to construct measures of star power and franchise strength that can assign credit more consistently across both successes and failures.
+These challenges make it necessary to construct measures of star power and franchise strength that can assign credit more consistently across both successes and failures. This led me to using a value above replacement approach.
+
+## Value Above Replacement
+
+Value above replacement methods are frequently used in sports and originated in the sabermetric revolution in baseball. The basic idea is that if we can set a baseline of performance and then analyze how much individual components contribute to outcomes above or below that baseline. In baseball, for example, wins above replacement (WAR) separates a player's value into offensive and defensive contributions.
+
+I apply this same idea to movie performance by allocating credit between intellectual property and cast.
+
+First, a baseline model is fit using a film\'s budget, genre, and release year to estimate expected performance. This allows movies to be compared on a common scale by examining the difference between observed outcomes and what would be expected based on these core characteristics alone.
+
+Take 1978 for example:
+
+```{r}
+movie_df |>
+  filter(year == 1978) |> 
+  ggplot(aes(x = release_date, y = resid0)) +
+  geom_point() +
+  geom_text_repel(data = movie_df |> filter((year == 1978)&(abs(resid0) > 2)),
+                         aes(label = title), vjust = -.1) +
+  labs(x = "Date", y = "SDs away from Expected Performance", 
+       title = "Movies in 1978", subtitle = "Expected Performance is based on a baseline model using budget, genre and release year") +
+  geom_hline(yintercept = 0, linetype = "dashed", alpha = .5) +
+   theme_minimal() 
+```
