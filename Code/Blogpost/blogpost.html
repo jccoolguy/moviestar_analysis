@@ -69,7 +69,33 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="research-motivation-question" class="level1">
 <h1>Research Motivation &amp; Question</h1>
-<p>A perception that is found frequently among box-office watchers is how big stars no longer bring people out to the theaters. Instead, it seems more and more profitable movies are associated with an existing IP leaning on good will from previous entries and in some cases nostalgia.</p>
+<p>A common belief among people who follow the box office is that movie stars don’t draw audiences the way they used to. Instead, the biggest hits today tend to be tied to established franchises, benefiting from familiar characters, shared universes, and nostalgia from earlier releases.</p>
+<p>This project looks at whether that belief actually holds up in the data, or whether it’s driven by how easy it is to remember the massive successes of franchises like Marvel or Star Wars.</p>
+<p>In particular, I’m interested in whether star power has actually become less important over time, compared to the pull of established franchises.</p>
+</section>
+<section id="data-overview" class="level1">
+<h1>Data Overview</h1>
+<p>The data for this project is sourced from The Movie Database. The sample consists of the 50 highest-budgeted English-language films released each year between 1970 and 2024 that received a full theatrical release.</p>
+<p>Focusing on high-budget theatrical films allows the analysis to concentrate on projects where commercial performance is a central objective, while excluding smaller art-house releases that often operate under different success criteria.</p>
+<p>For each film, the dataset includes information on release date, production budget, box office revenue, cast members, and any collection or franchise the film is associated with.</p>
+</section>
+<section id="key-measures" class="level1">
+<h1>Key Measures</h1>
+<p>Two core challenges in this analysis are defining star power within a cast and separating it from the pull of established franchises. When a movie performs well at the box office, it is not always obvious why. Is the success driven by the lead actor, or is the film benefiting from being part of a popular series with a built-in audience?</p>
+<p>The same ambiguity exists on the downside. When a film underperforms, it is unclear whether that outcome reflects weak audience interest in the cast, poor execution, or simply the limits of a franchise that audiences were never particularly excited about in the first place.</p>
+<p>These challenges make it necessary to construct measures of star power and franchise strength that can assign credit more consistently across both successes and failures. This led me to using a value above replacement approach.</p>
+<section id="value-above-replacement" class="level4">
+<h4 class="anchored" data-anchor-id="value-above-replacement">Value Above Replacement</h4>
+<p>Value above replacement methods are frequently used in sports and originated in the sabermetric revolution in baseball. The basic idea is that if we can set a baseline of performance and then analyze how much individual components contribute to outcomes above or below that baseline. In baseball, for example, wins above replacement (WAR) separates a player’s value into offensive and defensive contributions.</p>
+<p>I apply this same idea to movie performance by allocating credit between intellectual property and cast.</p>
+<p>First, a baseline model is fit using a film’s budget, genre, and release year to estimate expected performance. This allows movies to be compared on a common scale by examining the difference between observed outcomes and what would be expected based on these core characteristics alone.</p>
+<p>Take 1978 for example:</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
 </section>
 
 </main>
