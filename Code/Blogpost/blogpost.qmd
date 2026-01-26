@@ -135,7 +135,7 @@ movie_df |>
     nudge_x = 700,
     size = 3
   ) +
-  geom_line(linewidth = .6, linetype = "dashed") +
+  geom_line(linewidth = .6, alpha = .5,linetype = "dashed") +
   labs(x = "Date", y = "IP Stock", 
        title = "Star Wars IP Stock", subtitle = "IP Stock is the cumulative sum of residual performance from prior franchise entries",
        caption = "Figure 2") +
