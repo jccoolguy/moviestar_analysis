@@ -132,7 +132,7 @@ movie_df |>
       y = (y_prev + ip_power_evergreen_prior)/2,
       label = sprintf("%.2f", delta)
     ),
-    nudge_x = 700,
+    nudge_x = 550,
     size = 3
   ) +
   geom_line(linewidth = .6, alpha = .5,linetype = "dashed") +
@@ -148,3 +148,7 @@ movie_df |>
     panel.grid.minor.x = element_blank()
   )
 ```
+
+### IP Momentum
+
+IP momentum, on the other hand, is a decaying sum of performance for the recent entries in a franchise. This allows us to factor in h
