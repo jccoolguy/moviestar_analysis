@@ -88,7 +88,7 @@ ul.task-list li input[type="checkbox"] {
 <h4 class="anchored" data-anchor-id="value-above-replacement">Value Above Replacement</h4>
 <p>Value above replacement methods are frequently used in sports and originated in the sabermetric revolution in baseball. The basic idea is that if we can set a baseline of performance and then analyze how much individual components contribute to outcomes above or below that baseline. In baseball, for example, wins above replacement (WAR) separates a player’s value into offensive and defensive contributions.</p>
 <p>I apply this same idea to movie performance by allocating credit between intellectual property and cast.</p>
-<p>First, a baseline model is fit using a film’s budget, genre, and release year to estimate expected performance. This allows movies to be compared on a common scale by examining the difference between observed outcomes and what would be expected based on these core characteristics alone.</p>
+<p>First, a baseline model is fit using a film’s budget, genre, and release year to estimate expected profitability, to be consistent we use the generic estimate of revenue minus 2.5 times budget. This allows movies to be compared on a common scale by examining the difference between observed outcomes and what would be expected based on these core characteristics alone.</p>
 <p>Take 1978 for example:</p>
 <div class="cell">
 <div class="cell-output-display">
@@ -101,7 +101,7 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="intellectual-property-power" class="level2">
 <h2 class="anchored" data-anchor-id="intellectual-property-power">Intellectual Property Power</h2>
-<p>An order is needed to consistently assign credit. Allocating performance to Intellectual Property serves two core purposes. For original films we can confidently set this metric to zero and assign credit entirely to the cast. For sequels, expected performance is naturally linked to the success of prior entires.</p>
+<p>An order is needed to consistently assign credit. Allocating performance to Intellectual Property serves two core purposes. For original films we can confidently set this metric to zero and assign credit entirely to the cast. For sequels, expected performance is naturally linked to the success of prior entries.</p>
 <p>This order is especially important for well-established franchises. For instance, a reboot of Star Wars enters theaters with incredible tailwinds from previous successes. It would be misleading to attribute most of that expected success to the cast. To capture this effect, intellectual property power is measured using two complementary metrics: IP Stock and IP Momentum.</p>
 <section id="ip-stock" class="level3">
 <h3 class="anchored" data-anchor-id="ip-stock">IP Stock</h3>
@@ -115,8 +115,23 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="ip-momentum" class="level3">
 <h3 class="anchored" data-anchor-id="ip-momentum">IP Momentum</h3>
-<p>IP momentum, on the other hand, is a decaying sum of performance for the recent entries in a franchise. This allows us to factor in h</p>
+<p>IP Momentum, on the other hand, captures the recent performance of a franchise using a decaying sum that places greater weight on more recent entries. This allows the measure to reflect how audience interest builds, or fades, as a series progresses, such as across a trilogy. Let’s take a look at <em>Star Wars</em> momentum:</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Figure 3 shows how IP momentum for the Star Wars franchise evolves over time. Momentum rises sharply during the original trilogy. The prequel trilogy generates a renewed increase in momentum, though growth is muted and levels off after weaker reception to later entries. The sequel trilogy follows a similar pattern. Between the three trilogies momentum tails off, highlighting the short-run and decaying nature of this measure.</p>
 </section>
+</section>
+<section id="cast-star-power" class="level2">
+<h2 class="anchored" data-anchor-id="cast-star-power">Cast Star Power</h2>
+<p>Now that we have IP Stock and IP Momentum defined for each movie cast level variables can be created. As previously discussed, it would be inapproriate to assign credit to the cast without first factoring in the IP effects. So we fit a new baseline for the movie after factoring in IP effects prior to the release. Lets see how relative performance changes for the Star Wars films after setting a new baseline.</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
 </section>
 </section>
 
