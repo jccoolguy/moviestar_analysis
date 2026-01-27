@@ -177,12 +177,50 @@ Figure 3 shows how IP momentum for the Star Wars franchise evolves over time. Mo
 
 ## Cast Star Power
 
-Now that we have IP Stock and IP Momentum defined for each movie cast level variables can be created. As previously discussed, it would be inapproriate to assign credit to the cast without first factoring in the IP effects. So we fit a new baseline for the movie after factoring in IP effects prior to the release. Lets see how relative performance changes for the Star Wars films after setting a new baseline.
+With IP Stock and IP Momentum defined for each film, cast measures of star power can now be constructed. As discussed earlier, it would be inappropriate to attribute excess performance to the cast without first accounting for the contribution of the underlying intellectual property.
+
+To address this, a new baseline is estimated incorporating IP Stock and IP Momentum prior to a film's release. Performance relative to this updated baseline reflects variation that cannot be explained by franchise strength alone and thus provides a cleaner foundation for measuring cast star power. Figure 4 illustrates how relative performance for Star Wars films changes once IP effects are taken into account.
 
 ```{r}
-movie_df |>
+baseline_plot_df <- movie_df |> 
   filter(collection_name == "Star Wars Collection") |> 
-  ggplot(aes(x = release_date)) +
-  geom_point(aes(y = resid0)) +
-  geom_point(aes(y = resid_actor))
+  select(release_date, title, resid0, resid_actor) |> 
+  mutate(difference = resid0 - resid_actor) |> 
+  pivot_longer(
+    cols = c(resid0 , resid_actor),
+    names_to = "residual_label",
+    values_to = "residual"
+  ) |> 
+  mutate(residual_label = factor(residual_label, 
+                                 levels = c("resid0","resid_actor")))
 ```
+
+```{r}
+baseline_plot_df |>
+  ggplot(aes(x = release_date, y = residual, col = residual_label)) +
+  geom_point() +
+  geom_segment(data = movie_df |> 
+                 filter(collection_name == "Star Wars Collection") |> 
+                 mutate(difference = resid0 - resid_actor),
+        aes(x = release_date, xend = release_date, y = resid0, 
+        yend = resid_actor + ifelse(difference < 0, -.1,.1)),
+        arrow = arrow(length = unit(.05, "inches"), type = "closed"),
+        inherit.aes = FALSE) +
+  labs(x = "Date", y = "Performance Relative to Expectation (SDs)",
+       title = "Star Wars Performance Relative to Baseline, Before and After IP Adjustment", subtitle = "IP Adjusted Baseline adds prior IP Power and IP Momentum to model",
+       color = "") +
+  scale_color_manual(
+    values = c("resid0" = "blue","resid_actor" = "red"),
+    labels = c(
+      resid0 = "Before IP Adjustment",
+      resid_actor = "After IP Adjustment",
+      caption = "Fig 4"
+    )
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed", alpha = .5) +
+  theme_minimal()
+```
+
+After accounting for IP Stock and IP Momentum, apparent over performance is substantially reduced for most Star Wars films. The only exception is the original Star Wars release, which now has a larger positive residual than before. This is expected, as the first film did not benefit from any pre-existing franchise strength its breakout success was less anticipated.
+
+This IP-adjusted baseline provides a cleaner foundation for attributing remaining excess performance to cast-level factors.
