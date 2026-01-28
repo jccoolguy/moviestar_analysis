@@ -225,16 +225,45 @@ After accounting for IP Stock and IP Momentum, apparent over performance is subs
 
 This IP-adjusted baseline provides a cleaner foundation for attributing remaining excess performance to cast-level factors. Credit is allocated across the top five billed actors to reflect prominence in the film, with 40% assigned to the lead actor, 25% to the second-billed actor, and the remaining 35% split evenly across the next three billed roles.
 
-### Actor Stock
+### Actor Stock and Actor Momentum
 
 Using the same value above replacement framework applied to intellectual property, cast star power has two components, Actor Stock and Actor Momentum. Actor Stock captures the cumulative performance of an actor's prior films while Actor Momentum emphasizes more recent successes by placing greater weight on newer roles. Both measures are constructed using only information available prior to a film's release and are calculated after accounting for intellectual property effects, ensuring actor-level contributions are not conflated with franchise strength.
 
+Actor Momentum is especially helpful for assessing actors who have on and off periods of commercial success which would be harder to pickup through Actor Stock. An example would be Eddie Murphy:
+
 ```{r}
-par(mfrow = c(1,2))
-actor_df <- modeling_data$actor_level_df
-actor_df |> 
-  filter(actor_name == "Nicolas Cage") |> 
-  ggplot(aes(x = release_date)) +
-  geom_point(aes(y = actor_star_power_momentum)) +
-  geom_line(aes(y = actor_star_power_momentum))
+eddie_long <- actor_df |> 
+  filter(actor_name == "Eddie Murphy") |> 
+  select(release_date, actor_star_power_momentum, actor_star_power_prior) |> 
+  pivot_longer(
+    cols = c(actor_star_power_momentum, actor_star_power_prior),
+    names_to = "metric",
+    values_to = "value"
+  ) |> 
+  mutate(
+    metric = recode(metric,
+                    actor_star_power_momentum = "Actor Momentum",
+                    actor_star_power_prior    =  "Actor Stock")
+  )
+  
 ```
+
+```{r}
+ggplot(eddie_long, aes(x = release_date, y = value)) +
+  geom_hline(data = subset(eddie_long, metric == "Actor Momentum"),
+             aes(yintercept = 0),
+             inherit.aes = FALSE,
+             linetype = "dotted",
+             alpha = 0.5) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 1.1) +
+  facet_wrap(~ metric, ncol = 2, scales = "free_y") +
+  labs(
+    title = "Eddie Murphy: Actor Momentum vs Actor Stock",
+    x = "Date",
+    y = NULL
+  ) +
+  theme_minimal()
+```
+
+Eddie Murphy became a superstar in the 80s, delivering fantastic performances in Trading Places and Beverly Hills Cop while he was a cast member on SNL. However, in the 90s he hit a bad streak of
