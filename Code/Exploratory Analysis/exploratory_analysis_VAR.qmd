@@ -379,8 +379,13 @@ actors_var <- actors_var |>
 First we have a cumulative sum:
 
 ```{r}
+actors_var <- actors_var |> 
+  left_join(df |> select(movie_id, release_date),"movie_id")
+```
+
+```{r}
 actors_var <- actors_var |>
-  arrange(actor_id, year, movie_id) |>
+  arrange(actor_id, release_date, movie_id) |>
   group_by(actor_id) |>
   mutate(
     actor_star_power_prior =
@@ -396,7 +401,7 @@ lambda_actor <- 0.15
 
 actors_var <- actors_var |>
   group_by(actor_id) |>
-  arrange(year, movie_id) |>
+  arrange(release_date, movie_id) |>
   mutate(
     actor_star_power_momentum = map_dbl(
       row_number(),
@@ -425,12 +430,12 @@ actors_var |>
 
 That looks good now.
 
-Bringing over the date and movie name fields from the df table.
+Bringing over the movie name fields from the df table.
 
 ```{r}
 actors_var <- actors_var |> 
   left_join(df |> 
-              select(movie_id, release_date, title),
+              select(movie_id, title),
             by = "movie_id")
 ```
 
@@ -784,3 +789,5 @@ Saving as csv:
 ```{r}
 write.csv(df,"D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Tables/df.csv")
 ```
+
+\
