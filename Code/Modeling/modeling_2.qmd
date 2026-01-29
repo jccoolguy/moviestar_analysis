@@ -41,9 +41,12 @@ df <- df |>
 tvc_mod <- gam(
   log_profitability ~
     log_budget +
-    factor(year) +              # or smooth(year) if you prefer
+    smooth(year) +              # or smooth(year) if you prefer
     s(year_c, by = ip_power_momentum_prior) +
-    s(year_c, by = actor_momentum_prior_sum),
+    s(year_c, by = actor_momentum_prior_sum) 
+    #s(year_c, by = ip_power_evergreen_prior) +
+    #s(year_c, by = actor_power_prior_sum)
+    ,
   data = df,
   method = "REML"
 )
@@ -112,7 +115,7 @@ plot(
 df <- df |>
   mutate(
     ip_z    = as.numeric(scale(ip_power_momentum_prior)),
-    actor_z = as.numeric(scale(actor_momentum_sum)),
+    actor_z = as.numeric(scale(actor_momentum_prior_sum)),
     year_c  = year - mean(year),
     log_budget = log(budget)
   )
@@ -125,8 +128,9 @@ library(mgcv)
 tvc_mod <- gam(
   log_profitability ~
     log_budget +
-    #year_c +
-    s(year_c, by = ip_z, k = 10)
+    #ip_z + #actor_z +
+    factor(year_c) +
+    s(year_c, by = ip_z, k = 10) +
     s(year_c, by = actor_z, k = 10),
   data = df,
   method = "REML"

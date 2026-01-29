@@ -262,7 +262,8 @@ ggplot(eddie_long, aes(x = release_date, y = value)) +
   labs(
     title = "Eddie Murphy: Actor Momentum vs Actor Stock",
     x = "Date",
-    y = NULL
+    y = NULL,
+    caption = "Figure 5"
   ) +
   theme_minimal()
 ```
@@ -275,4 +276,181 @@ At this point, every film is characterized by four pre-release explanatory measu
 
 # Methodology
 
-To measure how IP and Actor effects change over time I select a GAM model for several reasons. Firstly, our research question is to investigate how these effects change over time. If I was to use a model that forced a relationship it would be unable to reflect the reality that these effects
+To examine how the influence of IP and actor-related factors changes over time, we use a generalized additive model (GAM). This approach allows each variable's effect to vary smoothly with release year, capturing gradual shifts in audience preferences and industry structure without imposing a fixed parametric form. We also center and scale all IP and actor related factors, this allows for direct comparison across effects.
+
+# Results
+
+After model selection we ended up with a model with year, budget, IP Momentum (smoothed over year) and Actor Momentum (smoothed over year) all being statistically significant. IP Momentum and Actor Momentum have statistically significant effects over time. Let's see what that looks like:
+
+```{r}
+library(mgcv)
+df <- movie_df |>
+  mutate(
+    ip_z    = as.numeric(scale(ip_power_momentum_prior)),
+    actor_z = as.numeric(scale(actor_momentum_prior_sum)),
+    year_c  = year - mean(year),
+    log_budget = log(budget)
+  )
+
+tvc_mod <- gam(
+  log_profitability ~
+    log_budget +
+    #ip_z + actor_z +
+    factor(year_c) +
+    s(year_c, by = ip_z, k = 10) +
+    s(year_c, by = actor_z, k = 10),
+  data = df,
+  method = "REML"
+)
+```
+
+```{r}
+plot(
+  tvc_mod,
+  select = 1,
+  shade = TRUE,
+  main = "Time-Varying Effect of IP Power"
+)
+
+plot(
+  tvc_mod,
+  select = 2,
+  shade = TRUE,
+  main = "Time-Varying Effect of Actor Power"
+)
+```
+
+```{r}
+year_grid <- tibble(
+  year_c = seq(min(df$year_c), max(df$year_c), length.out = 200),
+  ip_z = 0,
+  actor_z = 0,
+  log_budget = mean(df$log_budget),
+  year = mean(df$year)  # only needed to satisfy factor(year_c)
+)
+```
+
+```{r}
+library(gratia)
+
+# Inspect smooth names (important!)
+smooths(tvc_mod)
+```
+
+```{r}
+ip_eff <- smooth_estimates(
+  tvc_mod,
+  select = "s(year_c):ip_z",
+  newdata = year_grid
+)
+
+actor_eff <- smooth_estimates(
+  tvc_mod,
+  select = "s(year_c):actor_z",
+  newdata = year_grid
+)
+```
+
+```{r}
+ip_df <- ip_eff |>
+  transmute(
+    year_c,
+    effect = .estimate,
+    lo = .estimate - 1.96 * .se,
+    hi = .estimate + 1.96 * .se,
+    term = "IP Momentum"
+  )
+
+actor_df <- actor_eff |>
+  transmute(
+    year_c,
+    effect = .estimate,
+    lo = .estimate - 1.96 * .se,
+    hi = .estimate + 1.96 * .se,
+    term = "Actor Momentum"
+  )
+
+plot_df <- bind_rows(ip_df, actor_df)
+```
+
+```{r}
+library(ggplot2)
+plot_df <- plot_df |>
+  mutate(year = year_c + mean(df$year))
+
+ggplot(plot_df, aes(x = year, y = effect)) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.25) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ term, scales = "free_y") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    x = "Year",
+    y = "Marginal effect on log profitability",
+    title = "Time-Varying Effects of IP and Actor Momentum",
+    caption = "Figure 6"
+  ) +
+  theme_minimal()
+```
+
+Figure 6 shows the estimated time-varying effects of Actor Momentum and IP Momentum on log profitability conditional on year fixed effects.
+
+Actor Momentum exhibits a hump shaped pattern. Its marginal effect rises through the 1970s peaking in the late 1980s then declining steadily until 2010. From 2010 to 2024, the estimated effect increases modestly and approaches levels comparable to its earlier peak; however, this late-period increase is accompanied by wider confidence intervals, reflecting greater uncertainty in recent years.
+
+In contrast, IP Momentum displays an approximately linear upward trend over the sample period. Between 1970 and 2024, the marginal effect of IP Momentum on log profitability nearly doubles. At all points in time, the effect remains statistically different from zero, indicating that films associated with stronger IP momentum consistently outperform weaker-IP films within the same release year.
+
+Taken together, these results suggest a shift in the sources of within-year box-office differentiation, away from actor-driven momentum and toward increasingly dominant IP-based advantages.
+
+An interesting plot to consider is the difference between these two effects over time:
+
+```{r}
+yr_grid <- tibble(year_c = seq(min(df$year_c, na.rm=TRUE),
+                              max(df$year_c, na.rm=TRUE),
+                              length.out = 200))
+
+# 2) Extract smooth estimates on the same grid
+# NOTE: use the smooth labels from your model.
+# From your plot labels, they look like:
+#   s(year_c, by = ip_power_momentum_prior)
+#   s(year_c, by = actor_momentum_prior_sum)
+
+ip_s  <- smooth_estimates(tvc_mod,
+                          smooth = "s(year_c):ip_z",
+                          newdata = yr_grid)
+
+act_s <- smooth_estimates(tvc_mod,
+                          smooth = "s(year_c):actor_z",
+                          newdata = yr_grid)
+
+# 3) Join + compute dominance Δ(t)
+dom <- ip_s %>%
+  select(year_c, ip_est = .estimate, ip_se = .se) %>%
+  left_join(
+    act_s %>% select(year_c, act_est = .estimate, act_se = .se),
+    by = "year_c"
+  ) %>%
+  mutate(
+    dom_est = ip_est - act_est,
+    dom_se  = sqrt(ip_se^2 + act_se^2),  # conservative (ignores covariance)
+    dom_lo  = dom_est - 1.96 * dom_se,
+    dom_hi  = dom_est + 1.96 * dom_se
+  )
+
+dom <- dom |>
+  mutate(year = year_c + mean(df$year))
+# 4) Plot
+ggplot(dom, aes(x = year
+                , y = dom_est)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_ribbon(aes(ymin = dom_lo, ymax = dom_hi), alpha = 0.25) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Relative Dominance Over Time: IP vs Actor Momentum",
+    subtitle = expression(Delta(t)==beta[IP](t)-beta[Actor](t)),
+    x = "year_c",
+    y = expression(Delta(t)),
+    caption = "Figure 7"
+  ) +
+  theme_minimal()
+```
+
+Figure 7 plots the estimated difference between the time-varying marginal effects of IP Momentum and Actor Momentum on log profitability. Positive values indicate periods in which IP Momentum has a larger within-year profitability effect than Actor Momentum. The estimated difference crosses below zero only during the early 1980s through the early 1990s, indicating a period in which actor momentum was at least as important as IP momentum in differentiating film profitability. After this period, IP Momentum consistently exhibits a larger marginal effect, increasing steadily through the 2000s before leveling off in the early 2010s. Although uncertainty is relatively wide throughout the sample, the confidence interval excludes zero for much of the period from roughly 2000 to 2015, providing evidence that IP Momentum was the dominant driver of within-year profitability during this era. Overall, the figure indicates that IP Momentum has exerted a larger profitability effect than Actor Momentum since the mid-1990s.

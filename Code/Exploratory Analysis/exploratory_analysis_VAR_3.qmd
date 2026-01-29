@@ -1,0 +1,838 @@
+---
+title: "Exploratory Analysis VAR"
+format: html
+editor: visual
+---
+
+# Libraries
+
+```{r}
+library(qs)
+library(tidyverse)
+```
+
+# Loading Data
+
+```{r}
+data <- qs::qread(
+  "D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Combined/tmdb_1970_2024_top50_by_budget.qs"
+)
+movie_df <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Adjustments/movie_df_1.qs")
+ip_df <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Adjustments/ip_df_1.qs")
+genres_df <- data$genres
+directors_df <- data$directors
+actors_df <- data$actors
+```
+
+# Baseline without IP or Actors
+
+Before modeling I want to check out our response variable, log profitability.
+
+```{r}
+movie_df |> 
+  ggplot(aes(x = log_profitability)) +
+  geom_density()
+```
+
+Looks great, very symmetrical and tracks with intuition that most films break even.
+
+Creating a df table that left joins and grabs a bunch of relevant info.
+
+```{r}
+df <- movie_df |>
+  mutate(log_budget = log(budget)) |> 
+  left_join(genres_df, by = "movie_id") |> 
+  #left_join(directors_df, by = "movie_id") |> 
+  filter(!is.na(top_genre))
+head(df)
+```
+
+Fitting a baseline model which predicts profitability based on log budget, genre and holding a fixed effect for year.
+
+```{r}
+library(fixest)
+baseline0 <- feols(
+   log_profitability ~ log_budget + top_genre | year,
+  data = df
+)
+```
+
+Checking assumptions:
+
+```{r}
+plot(fitted(baseline0), resid(baseline0),
+     xlab = "Fitted values",
+     ylab = "Residuals")
+abline(h = 0, col = "red")
+```
+
+```{r}
+plot(df$log_budget, resid(baseline0),
+     xlab = "log(budget)",
+     ylab = "Residuals")
+abline(h = 0, col = "red")
+```
+
+```{r}
+boxplot(resid(baseline0) ~ df$year,
+        outline = FALSE,
+        las = 2)
+abline(h = 0, col = "red")
+
+
+```
+
+This all looks good, moving forward..
+
+Assigning the residuals to each movie:
+
+```{r}
+df <- df |> 
+  mutate(resid0 = resid(baseline0))
+head(df)
+```
+
+# IP Power
+
+```{r}
+ip_movies <- df |>
+  filter(!is.na(collection_id)) |>
+  arrange(collection_id, year, release_date, movie_id) |>
+  group_by(collection_id) |>
+  mutate(
+    installment = row_number()
+  ) |>
+  ungroup()
+head(ip_movies)
+```
+
+```{r}
+ip_movies |>
+  count(installment)
+```
+
+# Adding an IP Power feature:
+
+```{r}
+lambda <- 0.15
+
+ip_movies <- ip_movies |>
+  group_by(collection_id) |>
+  arrange(year, release_date, movie_id) |>
+  mutate(
+    ip_power_prior_decay = purrr::map_dbl(
+      row_number(),
+      function(i) {
+        if (i == 1) return(0)
+        sum(
+          resid0[1:(i - 1)] *
+          exp(-lambda * (year[i] - year[1:(i - 1)]))
+        )
+      }
+    )
+  ) |>
+  ungroup()
+```
+
+Merging back to full table:
+
+```{r}
+df <- df |>
+  left_join(
+    ip_movies |>
+      select(movie_id, ip_power_prior_decay),
+    by = "movie_id"
+  ) |>
+  mutate(
+    ip_power_prior_decay  = coalesce(ip_power_prior_decay, 0)
+  )
+
+```
+
+# Some Checks
+
+```{r}
+ip_movies |> 
+  filter(installment == 1) |> 
+  summarise(
+    max_ip_power = max(ip_power_prior_decay)
+  )
+```
+
+```{r}
+ip_movies |>
+  group_by(installment) |>
+  summarise(
+    mean_ip_power = mean(ip_power_prior_decay)
+  )
+```
+
+```{r}
+ip_movies |>
+  filter(collection_name == "Star Wars Collection") |>
+  select(title, year, resid0, ip_power_prior_decay)
+```
+
+One concern I have is that the ip decays too hard for something like star wars which has such cultural equity that it doesnt really matter if they have taken a break. So I am instead going to define ip momentum, which is a decaying sum of performance. So for instance in a triology the third movie will have high momentum, while a reboot 10 years later will have low. On the other hand evergreen will be a sum of performance overtime, this factors in something like James Bond or Star Wars which can hit a reboot and be instantly popular (regardless of how good the movie is...).
+
+```{r}
+has_release_date <- "release_date" %in% names(df)
+
+lambda <- 0.15  # momentum decay rate (we can tune later)
+
+ip_tbl <- df |>
+  filter(!is.na(collection_id)) |>
+  arrange(
+    collection_id,
+    year,
+    if (has_release_date) release_date else year,  # harmless if absent
+    movie_id
+  ) |>
+  group_by(collection_id) |>
+  mutate(
+    installment = row_number(),
+    years_since_last_installment = year - lag(year),
+
+    # Evergreen = sum of prior residuals (no decay)
+    ip_evergreen_prior = lag(cumsum(resid0), default = 0),
+
+    # Momentum = decay-weighted sum of prior residuals (prior-only)
+    ip_momentum_prior = map_dbl(row_number(), function(i) {
+      if (i == 1) return(0)
+      past_resid <- resid0[1:(i - 1)]
+      past_years <- year[1:(i - 1)]
+      cur_year   <- year[i]
+      sum(past_resid * exp(-lambda * (cur_year - past_years)))
+    })
+  ) |>
+  ungroup() |>
+  select(
+    movie_id,
+    installment,
+    years_since_last_installment,
+    ip_evergreen_prior,
+    ip_momentum_prior
+  )
+
+# Join back to df and set non-IP movies to 0
+df <- df |>
+  left_join(ip_tbl, by = "movie_id") |>
+  mutate(
+    installment = coalesce(installment, 1L),
+    years_since_last_installment = coalesce(years_since_last_installment, NA_real_),
+    ip_evergreen_prior = coalesce(ip_evergreen_prior, 0),
+    ip_momentum_prior  = coalesce(ip_momentum_prior, 0)
+  )
+```
+
+Spot checking that movies that are first have zero for each:
+
+```{r}
+df |>
+  filter(!is.na(collection_id), installment == 1) |>
+  summarise(
+    max_evergreen = max(ip_evergreen_prior),
+    max_momentum  = max(ip_momentum_prior)
+  )
+```
+
+Looks good, now checking star wars:
+
+```{r}
+df |>
+  filter(collection_id == df$collection_id[which.max(df$ip_evergreen_prior)]) |>
+  arrange(year, movie_id) |>
+  select(title, year, resid0, installment, ip_evergreen_prior, ip_momentum_prior)
+
+```
+
+# Actor Star Power
+
+Now we fit we are getting the over performance for actors, conditioning on IP power. This makes it so an actor gets credit for the first film of an IP performing great... but an actor doesnt get as much credit for a huge ip coming out with a new movie.
+
+```{r}
+library(dplyr)
+library(splines)
+
+years_all <- sort(unique(df$year))
+
+# final residuals used for actor VAR allocation
+df$resid_actor <- NA_real_
+
+# keep object name baseline_actor (list of year-by-year models)
+baseline_actor <- vector("list", length(years_all))
+names(baseline_actor) <- as.character(years_all)
+
+for (t in years_all) {
+
+  train <- df |> filter(year < t)
+  test  <- df |> filter(year == t)
+
+  if (nrow(test) == 0) next
+  if (nrow(train) < 50 || length(unique(train$year)) < 3) next
+
+  # keep only rows with finite inputs (prevents predict() NAs)
+  train <- train |>
+    filter(
+      is.finite(log_profitability),
+      is.finite(year),
+      is.finite(ip_evergreen_prior),
+      is.finite(ip_momentum_prior)
+    )
+
+  test <- test |>
+    filter(
+      is.finite(log_profitability),
+      is.finite(year),
+      is.finite(ip_evergreen_prior),
+      is.finite(ip_momentum_prior)
+    )
+
+  if (nrow(test) == 0) next
+  if (nrow(train) < 50 || length(unique(train$year)) < 3) next
+
+  # Simplified actor-conditional baseline: IP priors + time trend only
+  m <- lm(
+    log_profitability ~ ip_evergreen_prior + ip_momentum_prior + ns(year, df = 4),
+    data = train
+  )
+  baseline_actor[[as.character(t)]] <- m
+
+  # out-of-sample prediction for year t
+  pred_t <- predict(m, newdata = test)
+
+  # out-of-sample residuals
+  df$resid_actor[df$movie_id %in% test$movie_id] <-
+    test$log_profitability - pred_t
+}
+
+```
+
+Taking a look at the model:
+
+```{r}
+summary(baseline_actor)
+```
+
+The evergreen variable does not seem significant, but I think its helpful for those edge cases we discussed before so for now ill leave it in.
+
+```{r}
+summary(df$resid_actor)
+```
+
+Quick residual checks:
+
+```{r}
+plot(fitted(baseline_actor), resid(baseline_actor),
+     xlab = "Fitted values",
+     ylab = "Residuals")
+abline(h = 0, col = "red")
+```
+
+Looks good.
+
+Heres a look at the residuals vs IP power. Starting with evergreen:
+
+```{r}
+plot(df$ip_evergreen_prior, resid(baseline_actor),
+     xlab = "IP evergreen prior",
+     ylab = "Actor residual")
+abline(h = 0, col = "red")
+```
+
+We can see that a ton of credit gets thrown around at the 0 IP evergreen prior, this makes sense. For a non-established IP the cast deserves much more credit (or blame) for a movies performance. It may be worth taking another look at this though.
+
+Now we look at the IP momentum prior:
+
+```{r}
+plot(df$ip_momentum_prior, resid(baseline_actor),
+     xlab = "IP momentum prior",
+     ylab = "Actor residual")
+abline(h = 0, col = "red")
+
+```
+
+This looks good, similar idea at momentum equals zero but that makes sense.
+
+Taking a look at influence:
+
+```{r}
+df$resid_actor <- resid(baseline_actor)
+df$abs_resid <- abs(df$resid_actor)
+
+df |>
+  arrange(desc(abs_resid)) |>
+  select(title, year, log_profitability, abs_resid, ip_evergreen_prior, ip_momentum_prior) |>
+  head(20)
+
+```
+
+We have the resid_actor column now, this is the performance attributed to the actors. Our next step is dividing that among each actor based on whether they are a lead or secondary character.
+
+```{r}
+actors_var <- actors_df |>
+  left_join(
+    df |> select(movie_id, year, resid_actor),
+    by = "movie_id"
+  )
+```
+
+Dividing credit:
+
+```{r}
+actors_var <- actors_var |>
+  mutate(
+    billing_weight = case_when(
+      billing_order == 0 ~ 0.40,
+      billing_order == 1 ~ 0.25,
+      billing_order %in% 2:5 ~ 0.35 / 4,
+      TRUE ~ NA_real_
+    ),
+    actor_var_contribution = resid_actor * billing_weight
+  )
+```
+
+Check:
+
+```{r}
+actors_var |>
+  group_by(movie_id) |>
+  summarise(
+    weight_sum = sum(billing_weight, na.rm = TRUE),
+    n = n()
+  ) |>
+  summarise(
+    min_weight = min(weight_sum),
+    max_weight = max(weight_sum),
+    min_n = min(n),
+    max_n = max(n)
+  )
+```
+
+Creating an actor level star power prior to each movie:
+
+Starting off we calculate each actors contribution, if its NA then we use zero.
+
+```{r}
+actors_var <- actors_var |>
+  mutate(
+    actor_var_contribution = resid_actor * billing_weight,
+    contrib_safe = replace_na(actor_var_contribution, 0)
+  )
+```
+
+First we have a cumulative sum:
+
+```{r}
+actors_var <- actors_var |> 
+  left_join(df |> select(movie_id, release_date),"movie_id")
+```
+
+```{r}
+actors_var <- actors_var |>
+  arrange(actor_id, release_date, movie_id) |>
+  group_by(actor_id) |>
+  mutate(
+    actor_star_power_prior =
+      lag(cumsum(contrib_safe), default = 0)
+  ) |>
+  ungroup()
+```
+
+Then we also have a momentum, this places importance on recency :
+
+```{r}
+lambda_actor <- 0.15
+
+actors_var <- actors_var |>
+  group_by(actor_id) |>
+  arrange(release_date, movie_id) |>
+  mutate(
+    actor_star_power_momentum = map_dbl(
+      row_number(),
+      function(i) {
+        if (i == 1) return(0)
+        past <- contrib_safe[1:(i - 1)]
+        past_years <- year[1:(i - 1)]
+        cur_year <- year[i]
+        sum(past * exp(-lambda_actor * (cur_year - past_years)))
+      }
+    )
+  ) |>
+  ungroup()
+```
+
+Checking that first appearances must be zero:
+
+```{r}
+actors_var |>
+  group_by(actor_id) |>
+  slice_min(year, n = 1, with_ties = FALSE) |>
+  summarise(max_prior = max(actor_star_power_prior)) |> 
+  pull(max_prior) |> 
+  unique()
+```
+
+That looks good now.
+
+Bringing over the movie name fields from the df table.
+
+```{r}
+actors_var <- actors_var |> 
+  left_join(df |> 
+              select(movie_id, title),
+            by = "movie_id")
+```
+
+Seeing a certain actor:
+
+```{r}
+tom_cruise_stats <- actors_var |> 
+  filter(actor_name == "Tom Cruise")
+head(tom_cruise_stats)
+```
+
+```{r}
+tom_cruise_stats |> 
+  ggplot(aes(x = release_date)) +
+  geom_text(aes(y = actor_star_power_prior,label = title), vjust = -.5, size = 3) +
+  geom_line(aes(y = actor_star_power_prior)) +
+  geom_line(aes(y = actor_star_power_momentum))
+  
+```
+
+```{r}
+daniel_craig_stats <- actors_var |> 
+  filter(actor_name == "Daniel Craig")
+```
+
+```{r}
+daniel_craig_stats |> 
+  ggplot(aes(x = release_date)) +
+  geom_text(aes(y = actor_star_power_prior,label = title), vjust = -.5, size = 3) +
+  geom_line(aes(y = actor_star_power_prior)) +
+  geom_line(aes(y = actor_star_power_momentum))
+```
+
+Okay somehow we are missing the james bond movies, I think I need to consider rerunning the pull with only an english filter.
+
+```{r}
+timothee_chalamet_stats <- actors_var |> 
+  filter(actor_id == 1190668)
+head(timothee_chalamet_stats)
+```
+
+Actors with the highest star power:
+
+```{r}
+actors_var |> 
+  group_by(actor_name) |> 
+  summarise(max_power = max(actor_star_power_prior)) |> 
+  slice_max(max_power, n = 20)
+```
+
+This seems to match intuition, these are all massive stars. Let's take a look at Harrison Ford's career trajectory:
+
+```{r}
+harrison_ford_stats <- actors_var |> 
+  filter(actor_name == "Harrison Ford")
+head(harrison_ford_stats)
+```
+
+```{r}
+harrison_ford_stats |> 
+  ggplot(aes(x = release_date)) +
+  geom_text(aes(y = actor_star_power_prior,label = title), vjust = -.5, size = 3) +
+  geom_line(aes(y = actor_star_power_prior)) +
+  geom_line(aes(y = actor_star_power_momentum))
+```
+
+Looking at will smith:
+
+```{r}
+will_smith_stats <- actors_var |> 
+  filter(actor_name == "Will Smith")
+head(will_smith_stats)
+```
+
+```{r}
+will_smith_stats |> 
+  ggplot(aes(x = release_date)) +
+  geom_text(aes(y = actor_star_power_prior,label = title), vjust = -.5, size = 3) +
+  geom_line(aes(y = actor_star_power_prior)) +
+  geom_line(aes(y = actor_star_power_momentum))
+```
+
+Let's take a look at the worst performing actors:
+
+```{r}
+actors_var |> 
+  group_by(actor_name) |> 
+  summarise(median_power = median(actor_star_power_prior), num_movies = n()) |> 
+  slice_min(median_power, n = 20)
+```
+
+Sean Connery having such low grades is odd, lets take a look.
+
+```{r}
+sean_connery_stats <- actors_var |> 
+  filter(actor_name == "Sean Connery")
+head(sean_connery_stats)
+```
+
+```{r}
+sean_connery_stats |> 
+  ggplot(aes(x = release_date)) +
+  geom_text(aes(y = actor_star_power_prior,label = title), vjust = -.5, size = 3) +
+  geom_line(aes(y = actor_star_power_prior)) +
+  geom_line(aes(y = actor_star_power_momentum))
+```
+
+Clearly missing James Bond movies here... seems a single movie might doom an actors scores a bit too harshly.
+
+There seems to be some poor record keeping of movies in this era, worth noting... the man who would be king is cited as having a revenue of 12678. That makes no sense, I'm seeing it took in 12 million. We may need to look at extreme values to validate figures or filter out the 70s movies.
+
+Michael Caine as well. Lets take a look:
+
+```{r}
+michael_caine_stats <- actors_var |> 
+  filter(actor_name == "Michael Caine")
+head(michael_caine_stats)
+```
+
+```{r}
+michael_caine_stats |> 
+  ggplot(aes(x = release_date)) +
+  geom_text(aes(y = actor_star_power_prior,label = title), vjust = -.5, size = 3) +
+  geom_line(aes(y = actor_star_power_prior)) +
+  geom_line(aes(y = actor_star_power_momentum))
+```
+
+A man who would be king once again takes a victim.
+
+# Investigating Large and Small Actor Residuals
+
+Before moving forward we need to take a look at large and small actor residuals to validate results.
+
+I'm going to start by looking at a boxplot by year to see if the number of outliers changes over time.
+
+```{r}
+df |>
+  ggplot(aes(x = year, y = resid_actor, group = year)) +
+  geom_boxplot()
+```
+
+There are a few huge outliers on the downside in the 70s, ill focus my analysis on those with residual \< -2.5.
+
+```{r}
+df |> 
+  filter(between(year, 1970, 1980)) |> 
+  filter(resid_actor < -2.5) |> 
+  arrange(resid_actor)
+```
+
+The man who would be king we already discussed, I'll take a look at a few of these.
+
+Duel, from sources it does not appear this had a major theatrical release... hence why revenue is reported as low as 2544.
+
+Attack of the helping hand is a 6 minute short...
+
+Clearly some of these are such small films that I don't think they should be included. I am going to consider filtering out the 70s due to the lack of data quantity and quality. Lets take a look at the 80s.
+
+```{r}
+outliers_80s <- df |> 
+  filter(between(year, 1980, 1990)) |> 
+  filter(resid_actor < -2.5) |> 
+  arrange(resid_actor) |> 
+  select(title, release_date, budget, revenue, profit, resid_actor)
+outliers_80s
+```
+
+Most of these seem reasonable.
+
+The hand seems to have budget in CAD, revenue hard to track down.
+
+A lot look like genuine box office bombs, but I am a bit concerned about treating these small budget films the same as large budget films when their losses are smaller in absolute terms.
+
+Lets take a look at 90s flops.
+
+```{r}
+outliers_90s <- df |> 
+  filter(between(year, 1990, 2000)) |> 
+  filter(resid_actor < -2.5) |> 
+  arrange(resid_actor) |> 
+  select(title, release_date, budget, revenue, profit, resid_actor)
+outliers_90s
+```
+
+These all seem like genuine flops.
+
+Looking at 2000:
+
+```{r}
+outliers_00s <- df |> 
+  filter(between(year, 2000, 2010)) |> 
+  filter(resid_actor < -2.5) |> 
+  arrange(resid_actor) |> 
+  select(title, release_date, budget, revenue, profit, resid_actor)
+outliers_00s
+```
+
+Kill bill the whole bloody affair seems to be two movies packed in one, so not a great inclusion.
+
+Other than that, all look reasonable.
+
+```{r}
+outliers_10s <- df |> 
+  filter(between(year, 2010, 2019)) |> 
+  filter(resid_actor < -2.5) |> 
+  arrange(resid_actor) |> 
+  select(title, release_date, budget, revenue, profit, resid_actor)
+outliers_10s
+```
+
+The Irishman was a netflix release, so perhaps a bit silly to include in this way.
+
+The others look reasonable.
+
+```{r}
+outliers_20s <- df |> 
+  filter(between(year, 2020, 2024)) |> 
+  filter(resid_actor < -2.5) |> 
+  arrange(resid_actor) |> 
+  select(title, release_date, budget, revenue, profit, resid_actor)
+outliers_20s
+```
+
+Almost all of these at the start are limited releases that went to streaming. Is there a way to filter these out?
+
+There are much less positive outliers, so lets look at them all at once.
+
+```{r}
+positive_outliers <- df |>  
+  filter(resid_actor > 3)
+positive_outliers
+```
+
+These all seem super reasonable except Bad boys for life which released pre pandemic... so performed a lot better than 2020 films.
+
+Overall these is a case to be made to filter out years with low numbers of films. Particularly the 70s (at least the early portion) and deal with the covid years in some way. The combination of iffy data, not many releases and in the covid years case many small releases complicate our analysis if we were to ignore them.
+
+However, since our interest is to analyze IP power vs star power over time it could be okay to just note this and continue forward.
+
+There is a way to filter on release type codes, if we filter on release type code 3 we can get only theatrical releases. This filters out TV specials, limited theatrical releases etc. I will look at this later on.
+
+# Bringing back to movie level
+
+```{r}
+actor_movie_prior <- actors_var |>
+  group_by(movie_id) |>
+  summarise(
+    # PRIOR (career stock entering movie), billing-weighted
+    actor_power_prior_sum =
+      sum(actor_star_power_prior * billing_weight, na.rm = TRUE),
+
+    actor_power_prior_max =
+      max(actor_star_power_prior, na.rm = TRUE),
+
+    # MOMENTUM (recent heat entering movie), billing-weighted
+    actor_momentum_prior_sum =
+      sum(actor_star_power_momentum * billing_weight, na.rm = TRUE),
+
+    actor_momentum_prior_max =
+      max(actor_star_power_momentum, na.rm = TRUE),
+
+    n_cast = n(),
+    .groups = "drop"
+  ) |>
+  mutate(
+    actor_power_prior_concentration =
+      actor_power_prior_max / actor_power_prior_sum
+  )
+```
+
+Adding back to the df table:
+
+```{r}
+df <- df |>
+  left_join(actor_movie_prior, by = "movie_id") |>
+  mutate(
+    actor_power_prior_sum =
+      coalesce(actor_power_prior_sum, 0),
+    actor_momentum_prior_sum =
+      coalesce(actor_momentum_prior_sum, 0)
+  )
+```
+
+Making the IP columns clear:
+
+```{r}
+df <- df |>
+  rename(
+    ip_power_evergreen_prior = ip_evergreen_prior,
+    ip_power_momentum_prior  = ip_momentum_prior
+  )
+```
+
+```{r}
+df |>
+  summarise(
+    missing_actor_sum = mean(is.na(actor_power_prior_sum)),
+    missing_ip_ever   = mean(is.na(ip_power_evergreen_prior)),
+    missing_ip_mom    = mean(is.na(ip_power_momentum_prior))
+  )
+```
+
+Fixing missing actor values:
+
+```{r}
+df <- df |>
+  mutate(
+    actor_power_prior_sum = coalesce(actor_power_prior_sum, 0),
+    actor_power_prior_max = coalesce(actor_power_prior_max, 0),
+    actor_momentum_prior_sum = coalesce(actor_momentum_prior_sum, 0),
+    actor_momentum_prior_max = coalesce(actor_momentum_prior_max, 0)
+  )
+```
+
+Checking that all first installments have zero IP power:
+
+```{r}
+df |>
+  filter(!is.na(collection_id), installment == 1) |>
+  summarise(
+    max_ip_evergreen = max(ip_power_evergreen_prior),
+    max_ip_momentum  = max(ip_power_momentum_prior)
+  )
+```
+
+Saving down tables:
+
+```{r}
+qsave(
+  df,
+  "D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Tables/df.qs"
+)
+qsave(ip_tbl, "D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Tables/ip_tbl.qs")
+
+qsave(actors_var, "D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Tables/actors_var.qs")
+```
+
+Saving down combined:
+
+```{r}
+modeling_data <- list(
+  movie_level_df    = df |> filter(year > 1972),
+  actor_level_df    = actors_var |> filter(year > 1972),
+  ip_level_df      = ip_tbl |> filter(1972)
+)
+qsave(modeling_data,"D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Combined/modeling_data.qs")
+```
+
+Saving as csv:
+
+```{r}
+write.csv(df,"D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Tables/df.csv")
+```
+
+\
