@@ -134,7 +134,20 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 <p>After accounting for IP Stock and IP Momentum, apparent over performance is substantially reduced for most Star Wars films. The only exception is the original Star Wars release, which now has a larger positive residual than before. This is expected, as the first film did not benefit from any pre-existing franchise strength its breakout success was less anticipated.</p>
-<p>This IP-adjusted baseline provides a cleaner foundation for attributing remaining excess performance to cast-level factors.</p>
+<p>This IP-adjusted baseline provides a cleaner foundation for attributing remaining excess performance to cast-level factors. Credit is allocated across the top five billed actors to reflect prominence in the film, with 40% assigned to the lead actor, 25% to the second-billed actor, and the remaining 35% split evenly across the next three billed roles.</p>
+<section id="actor-stock-and-actor-momentum" class="level3">
+<h3 class="anchored" data-anchor-id="actor-stock-and-actor-momentum">Actor Stock and Actor Momentum</h3>
+<p>Using the same value above replacement framework applied to intellectual property, cast star power has two components, Actor Stock and Actor Momentum. Actor Stock captures the cumulative performance of an actor’s prior films while Actor Momentum emphasizes more recent successes by placing greater weight on newer roles. Both measures are constructed using only information available prior to a film’s release and are calculated after accounting for intellectual property effects, ensuring actor-level contributions are not conflated with franchise strength.</p>
+<p>Actor Momentum is especially helpful for assessing actors who have on and off periods of commercial success which would be harder to pickup through Actor Stock. An example would be Eddie Murphy:</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Eddie Murphy emerged as a superstar in the 80s, driven by a run of highly successful films such as Trading Places and Beverly Hills Cop. In the 1990s, however, his commercial performance became more uneven, with periods of weaker box-office results punctuated by occasional successes. This career arc is a usual illustration of the ups and downs that are commonplace in acting. While Actor Stock reflects the cumulative built in his early 80s peak, Actor Momentum is flexible and able to adapt to downturns demonstrating how these two metrics capture distinct aspects of star power over time.</p>
+<p>After constructing actor-level stock and momentum measures, we collapse these quantities back to the movie level to make them usable alongside film attributes and IP metrics. For each film, actor contributions are combined using the same billing-weight scheme used in attribution: 40% to the lead, 25% to the second-billed actor, and the remaining 35% split evenly across the next three. This produces a single, weighted actor stock value and a single, weighted actor momentum value for each movie, both based exclusively on information available prior to release.</p>
+<p>At this point, every film is characterized by four pre-release explanatory measures—IP Stock, IP Momentum, Actor Stock, and Actor Momentum—allowing all subsequent analysis to proceed at the movie level without revisiting cast-level structure.</p>
+</section>
 </section>
 </section>
 

@@ -20,6 +20,7 @@ library(ggthemes)
 ```{r}
 modeling_data <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Combined/modeling_data.qs")
 movie_df <- modeling_data$movie_level_df
+actor_df <- modeling_data$actor_level_df
 ```
 
 # Research Motivation & Question
@@ -266,4 +267,12 @@ ggplot(eddie_long, aes(x = release_date, y = value)) +
   theme_minimal()
 ```
 
-Eddie Murphy became a superstar in the 80s, delivering fantastic performances in Trading Places and Beverly Hills Cop while he was a cast member on SNL. However, in the 90s he hit a bad streak of
+Eddie Murphy emerged as a superstar in the 80s, driven by a run of highly successful films such as Trading Places and Beverly Hills Cop. In the 1990s, however, his commercial performance became more uneven, with periods of weaker box-office results punctuated by occasional successes. This career arc is a usual illustration of the ups and downs that are commonplace in acting. While Actor Stock reflects the cumulative built in his early 80s peak, Actor Momentum is flexible and able to adapt to downturns demonstrating how these two metrics capture distinct aspects of star power over time.
+
+After constructing actor-level stock and momentum measures, we collapse these quantities back to the movie level to make them usable alongside film attributes and IP metrics. For each film, actor contributions are combined using the same billing-weight scheme used in attribution: 40% to the lead, 25% to the second-billed actor, and the remaining 35% split evenly across the next three. This produces a single, weighted actor stock value and a single, weighted actor momentum value for each movie, both based exclusively on information available prior to release.
+
+At this point, every film is characterized by four pre-release explanatory measures, IP Stock, IP Momentum, Actor Stock, and Actor Momentum, allowing all subsequent analysis to proceed at the movie level without revisiting cast-level structure.
+
+# Methodology
+
+To measure how IP and Actor effects change over time I select a GAM model for several reasons. Firstly, our research question is to investigate how these effects change over time. If I was to use a model that forced a relationship it would be unable to reflect the reality that these effects
