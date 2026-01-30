@@ -15,6 +15,7 @@ library(mgcv)
 library(tvReg)
 library(ggrepel)
 library(ggthemes)
+library(zoo)
 ```
 
 ```{r}
@@ -454,3 +455,52 @@ ggplot(dom, aes(x = year
 ```
 
 Figure 7 plots the estimated difference between the time-varying marginal effects of IP Momentum and Actor Momentum on log profitability. Positive values indicate periods in which IP Momentum has a larger within-year profitability effect than Actor Momentum. The estimated difference crosses below zero only during the early 1980s through the early 1990s, indicating a period in which actor momentum was at least as important as IP momentum in differentiating film profitability. After this period, IP Momentum consistently exhibits a larger marginal effect, increasing steadily through the 2000s before leveling off in the early 2010s. Although uncertainty is relatively wide throughout the sample, the confidence interval excludes zero for much of the period from roughly 2000 to 2015, providing evidence that IP Momentum was the dominant driver of within-year profitability during this era. Overall, the figure indicates that IP Momentum has exerted a larger profitability effect than Actor Momentum since the mid-1990s.
+
+# Interpretation & Implications
+
+Since each production company face finite budgets decisions about how much to allocate to intellectual property versus cast strength are trade-offs. Insight about whether IP strength or cast strength can be invaluable when production budgets are in the hundreds of millions. As displayed in the previous section IP Momentum, a metric representing IP effect, has become a stronger predictior of profitability over time. Studios have certainly noticed as the percent of top 50 budgeted movies associated with an established IP has consistently climbed over time.
+
+```{r}
+ip_share_df <- movie_df |> 
+  group_by(year) |> 
+  summarize(percent_ip = sum(established_ip)/n()*100) |> 
+  mutate(pct_ip_roll5 = rollmean(percent_ip, k = 4, fill = NA, align = "right"))
+
+ggplot(ip_share_df, aes(year, percent_ip)) +
+  geom_rect(
+    xmin = 2019.5, xmax = 2022.5, ymin = -Inf, ymax = Inf,
+   alpha = .1, inherit.aes = FALSE, fill = "lightblue",linewidth = .6
+  ) +
+  geom_line(alpha = .2) +
+  geom_line(aes(y = pct_ip_roll5), linewidth = 1) +
+  labs(x = "Year", y = "Percent of films with established IP",title = "Percent of top 50 budgeted films with an established IP before release", subtitle = "Grey line is percent per year. Black line is trailing 5-year average.", caption = "Figure 8") +
+  geom_text(x = 2021, y = 52, label = "COVID\n19", size = 3) +
+  theme_minimal()
+  
+  
+```
+
+Studios have responded to this shift: the share of top 50 budgeted films associated with an established IP has riven steadily since the early 2000s (Figure 8).
+
+In addition to IP effects correlating to better profitability, they have been less risky movies to produce.
+
+```{r}
+risk_df <- movie_df |>
+  group_by(established_ip) |>
+  summarise(
+    q10 = quantile(log_profitability, 0.10, na.rm = TRUE),
+    q50 = quantile(log_profitability, 0.50, na.rm = TRUE),
+    q90 = quantile(log_profitability, 0.90, na.rm = TRUE)
+  )
+
+ggplot(risk_df, aes(x = established_ip, y = q50)) +
+  geom_point(size = 3) +
+  geom_errorbar(
+    aes(ymin = q10, ymax = q90),
+    width = 0.15
+  ) +
+  labs(
+    x = "Established IP",
+    y = "Log profitability"
+  )
+```
