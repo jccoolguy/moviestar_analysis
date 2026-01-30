@@ -16,6 +16,7 @@ library(tvReg)
 library(ggrepel)
 library(ggthemes)
 library(zoo)
+library(gratia)
 ```
 
 ```{r}
@@ -34,7 +35,7 @@ In particular, I'm interested in whether star power has actually become less imp
 
 # Data Overview
 
-The data for this project is sourced from The Movie Database. The sample consists of the 50 highest-budgeted English-language films released each year between 1970 and 2024 that received a full theatrical release.
+The data for this project is sourced from The Movie Database (TMDB). The sample consists of the 50 highest-budgeted English-language films released each year between 1970 and 2024 that received a full theatrical release.
 
 Focusing on high-budget theatrical films allows the analysis to concentrate on projects where commercial performance is a central objective, while excluding smaller art-house releases that often operate under different success criteria.
 
@@ -46,7 +47,7 @@ Two core challenges in this analysis are defining star power within a cast and s
 
 The same ambiguity exists on the downside. When a film underperforms, it is unclear whether that outcome reflects weak audience interest in the cast, poor execution, or simply the limits of a franchise that audiences were never particularly excited about in the first place.
 
-These challenges make it necessary to construct measures of star power and franchise strength that can assign credit more consistently across both successes and failures. This led me to using a value above replacement approach.
+These challenges make it necessary to construct measures of star power and franchise strength that can assign credit more consistently across both successes and failures. This led to the use of a value above replacement approach.
 
 #### Value Above Replacement
 
@@ -94,7 +95,7 @@ A key principle in this attribution is that only information available prior to 
 
 ## Intellectual Property Power
 
-An order is needed to consistently assign credit. Allocating performance to Intellectual Property serves two core purposes. For original films we can confidently set this metric to zero and assign credit entirely to the cast. For sequels, expected performance is naturally linked to the success of prior entries.
+A consistent ordering is required to assign credit across films.. Allocating performance to Intellectual Property serves two core purposes. For original films we can confidently set this metric to zero and assign credit entirely to the cast. For sequels, expected performance is naturally linked to the success of prior entries.
 
 This order is especially important for well-established franchises. For instance, a reboot of Star Wars enters theaters with incredible tailwinds from previous successes. It would be misleading to attribute most of that expected success to the cast. To capture this effect, intellectual property power is measured using two complementary metrics: IP Stock and IP Momentum.
 
@@ -231,7 +232,7 @@ This IP-adjusted baseline provides a cleaner foundation for attributing remainin
 
 Using the same value above replacement framework applied to intellectual property, cast star power has two components, Actor Stock and Actor Momentum. Actor Stock captures the cumulative performance of an actor's prior films while Actor Momentum emphasizes more recent successes by placing greater weight on newer roles. Both measures are constructed using only information available prior to a film's release and are calculated after accounting for intellectual property effects, ensuring actor-level contributions are not conflated with franchise strength.
 
-Actor Momentum is especially helpful for assessing actors who have on and off periods of commercial success which would be harder to pickup through Actor Stock. An example would be Eddie Murphy:
+Actor Momentum is especially useful for assessing actors with intermittent periods of commercial success, which are harder to capture through Actor Stock alone. An example would be Eddie Murphy:
 
 ```{r}
 eddie_long <- actor_df |> 
@@ -277,11 +278,11 @@ At this point, every film is characterized by four pre-release explanatory measu
 
 # Methodology
 
-To examine how the influence of IP and actor-related factors changes over time, we use a generalized additive model (GAM). This approach allows each variable's effect to vary smoothly with release year, capturing gradual shifts in audience preferences and industry structure without imposing a fixed parametric form. We also center and scale all IP and actor related factors, this allows for direct comparison across effects.
+To examine how the influence of IP and actor related factors changes over time, we use a generalized additive model (GAM). This approach allows each variable's effect to vary smoothly with release year, capturing gradual shifts in audience preferences and industry structure without imposing a fixed parametric form. All IP and actor related variables are centered and scaled, allowing for their effects to be compared directly.
 
 # Results
 
-After model selection we ended up with a model with year, budget, IP Momentum (smoothed over year) and Actor Momentum (smoothed over year) all being statistically significant. IP Momentum and Actor Momentum have statistically significant effects over time. Let's see what that looks like:
+After model selection we ended up with a model with year, budget, IP Momentum (smoothed over year) and Actor Momentum (smoothed over year) all being statistically significant. IP Momentum and Actor Momentum have statistically significant effects over time. The estimated time varying effects are shown below:
 
 ```{r}
 library(mgcv)
@@ -302,22 +303,6 @@ tvc_mod <- gam(
     s(year_c, by = actor_z, k = 10),
   data = df,
   method = "REML"
-)
-```
-
-```{r}
-plot(
-  tvc_mod,
-  select = 1,
-  shade = TRUE,
-  main = "Time-Varying Effect of IP Power"
-)
-
-plot(
-  tvc_mod,
-  select = 2,
-  shade = TRUE,
-  main = "Time-Varying Effect of Actor Power"
 )
 ```
 
@@ -401,7 +386,7 @@ In contrast, IP Momentum displays an approximately linear upward trend over the 
 
 Taken together, these results suggest a shift in the sources of within-year box-office differentiation, away from actor-driven momentum and toward increasingly dominant IP-based advantages.
 
-An interesting plot to consider is the difference between these two effects over time:
+A useful comparison is the difference between these two effects over time:
 
 ```{r}
 yr_grid <- tibble(year_c = seq(min(df$year_c, na.rm=TRUE),
@@ -447,7 +432,7 @@ ggplot(dom, aes(x = year
   labs(
     title = "Relative Dominance Over Time: IP vs Actor Momentum",
     subtitle = expression(Delta(t)==beta[IP](t)-beta[Actor](t)),
-    x = "year_c",
+    x = "Year",
     y = expression(Delta(t)),
     caption = "Figure 7"
   ) +
@@ -458,7 +443,7 @@ Figure 7 plots the estimated difference between the time-varying marginal effect
 
 # Interpretation & Implications
 
-Since each production company face finite budgets decisions about how much to allocate to intellectual property versus cast strength are trade-offs. Insight about whether IP strength or cast strength can be invaluable when production budgets are in the hundreds of millions. As displayed in the previous section IP Momentum, a metric representing IP effect, has become a stronger predictior of profitability over time. Studios have certainly noticed as the percent of top 50 budgeted movies associated with an established IP has consistently climbed over time.
+Since each production company faces finite budgets, decisions about how much to allocate to intellectual property versus cast strength involve clear trade-offs.. Understanding whether IP strength or cast strength are more strongly associated with excess performance is invaluable when production budgets are in the hundreds of millions. As displayed in the previous section IP Momentum, a metric representing IP effect, has become a stronger predictor of profitability over time.
 
 ```{r}
 ip_share_df <- movie_df |> 
@@ -480,27 +465,50 @@ ggplot(ip_share_df, aes(year, percent_ip)) +
   
 ```
 
-Studios have responded to this shift: the share of top 50 budgeted films associated with an established IP has riven steadily since the early 2000s (Figure 8).
+Consistent with this shift, the share of top 50 budgeted films associated with an established IP has risen steadily since the early 2000s (Figure 8).
 
-In addition to IP effects correlating to better profitability, they have been less risky movies to produce.
+In the results section we also saw Actor Momentum's effect on profitability decline after a peak near the turn of 1990.
 
 ```{r}
-risk_df <- movie_df |>
-  group_by(established_ip) |>
-  summarise(
-    q10 = quantile(log_profitability, 0.10, na.rm = TRUE),
-    q50 = quantile(log_profitability, 0.50, na.rm = TRUE),
-    q90 = quantile(log_profitability, 0.90, na.rm = TRUE)
-  )
+momentum_share_df <- movie_df |> 
+  group_by(year) |> 
+  summarize(average_actor_momentum = mean(actor_momentum_prior_sum)) |> 
+  mutate(average_actor_momentum_roll = 
+           rollmean(average_actor_momentum, k = 4, fill = NA, align = "right"))
 
-ggplot(risk_df, aes(x = established_ip, y = q50)) +
-  geom_point(size = 3) +
-  geom_errorbar(
-    aes(ymin = q10, ymax = q90),
-    width = 0.15
+ggplot(momentum_share_df, aes(year, average_actor_momentum)) +
+  geom_rect(
+    xmin = 2019.5, xmax = 2022.5, ymin = -Inf, ymax = Inf,
+   alpha = .1, inherit.aes = FALSE, fill = "lightblue",linewidth = .6
   ) +
-  labs(
-    x = "Established IP",
-    y = "Log profitability"
-  )
+  geom_line(alpha = .2) +
+
+  geom_line(aes(y = average_actor_momentum_roll), linewidth = 1) +
+  labs(x = "Year", y = "Actor Momentum",title = "Actor Momentum in the top 50 budgeted films", subtitle = "Grey line is Actor Momentum per year. Black line is trailing 5-year average.", caption = "Figure 9") +
+  geom_text(x = 2021, y = 52, label = "COVID\n19", size = 3) +
+  theme_minimal()
 ```
+
+In line with that decline, the Actor Momentum in casts of Top 50 budgeted movies has steadily declined since its peak in 1995 (Figure 9).
+
+Taken together, these results suggest a shift in the relative importance of intellectual property and cast-related factors among the highest-budgeted films since the mid-1990s. As the association between IP-related momentum and profitability has strengthened over time, the share of top-budgeted releases tied to established IP has also increased, while measures of actor momentum indicate a reduced role for densely stacked casts. Although there is some indication of a modest rebound in actor-related effects in recent years, it remains an open question whether this reflects a persistent change or a temporary fluctuation.
+
+# Limitations
+
+This analysis is intended to provide descriptive insight into how actor- and IP-related effects have evolved over time, and several limitations should be kept in mind when interpreting the results.
+
+-   Scope of IP measurement: IP effects are measured only through prior film releases in a franchise. Intellectual property originating in other media, such as books, television series or video games is not captured. This may understate IP strength for certain titles.
+
+-   Early period data constraints: Data availability before the 1970s is limited, making estimates of actor and IP effects in the early years of our sample less precise
+
+-   Unobserved drivers of profitability: Movie profitability is influenced by many factors not included in the model, such as directors, production companies, release timing, and competition in the box office. Incorporating these elements would require an expansion of scope beyond the goals of this project.
+
+-   Cost and revenue opacity: Publicly available financial data are not reported at a granular level, limiting visibility into marketing expenditures, cast compensation, backend participation, and other contractual arrangements that may affect both budgets and profitability.
+
+Despite these limitations, the framework provides a consistent way to compare the evolving roles of IP and cast factors within the high budget theatrical market.
+
+# Conclusion
+
+At the start of this project, we pointed to a familiar observation: big movies today seem to rely more on intellectual property and less on star-studded casts. Looking across several decades of high-budget releases, the data largely support that intuition. Over time, recent franchise performance has become increasingly associated with profitability, and the share of top-budget films tied to established IP has risen steadily since the early 2000s. Over the same period, short-run actor momentum effects on profitability have declined, and actor momentum within casts has also fallen, indicating that modern ensembles are less densely packed with high-momentum stars than in earlier decades.
+
+However, this does not spell the end of the movie star or the original movie. The growth of streaming platforms has expanded the space for lower budget original projects, reducing risk for producers while creating new opportunities for actors outside of theatrical blockbusters. At the same time, releasing a large budget film in theaters during this post pandemic landscape remains a high risk endeavor. In this environment, relying on established IP becomes an appealing way to hedge against downside risk.

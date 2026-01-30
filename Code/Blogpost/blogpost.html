@@ -146,9 +146,72 @@ ul.task-list li input[type="checkbox"] {
 </div>
 <p>Eddie Murphy emerged as a superstar in the 80s, driven by a run of highly successful films such as Trading Places and Beverly Hills Cop. In the 1990s, however, his commercial performance became more uneven, with periods of weaker box-office results punctuated by occasional successes. This career arc is a usual illustration of the ups and downs that are commonplace in acting. While Actor Stock reflects the cumulative built in his early 80s peak, Actor Momentum is flexible and able to adapt to downturns demonstrating how these two metrics capture distinct aspects of star power over time.</p>
 <p>After constructing actor-level stock and momentum measures, we collapse these quantities back to the movie level to make them usable alongside film attributes and IP metrics. For each film, actor contributions are combined using the same billing-weight scheme used in attribution: 40% to the lead, 25% to the second-billed actor, and the remaining 35% split evenly across the next three. This produces a single, weighted actor stock value and a single, weighted actor momentum value for each movie, both based exclusively on information available prior to release.</p>
-<p>At this point, every film is characterized by four pre-release explanatory measures—IP Stock, IP Momentum, Actor Stock, and Actor Momentum—allowing all subsequent analysis to proceed at the movie level without revisiting cast-level structure.</p>
+<p>At this point, every film is characterized by four pre-release explanatory measures, IP Stock, IP Momentum, Actor Stock, and Actor Momentum, allowing all subsequent analysis to proceed at the movie level without revisiting cast-level structure.</p>
 </section>
 </section>
+</section>
+<section id="methodology" class="level1">
+<h1>Methodology</h1>
+<p>To examine how the influence of IP and actor-related factors changes over time, we use a generalized additive model (GAM). This approach allows each variable’s effect to vary smoothly with release year, capturing gradual shifts in audience preferences and industry structure without imposing a fixed parametric form. We also center and scale all IP and actor related factors, this allows for direct comparison across effects.</p>
+</section>
+<section id="results" class="level1">
+<h1>Results</h1>
+<p>After model selection we ended up with a model with year, budget, IP Momentum (smoothed over year) and Actor Momentum (smoothed over year) all being statistically significant. IP Momentum and Actor Momentum have statistically significant effects over time. Let’s see what that looks like:</p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "s(year_c):ip_z"    "s(year_c):actor_z"</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Figure 6 shows the estimated time-varying effects of Actor Momentum and IP Momentum on log profitability conditional on year fixed effects.</p>
+<p>Actor Momentum exhibits a hump shaped pattern. Its marginal effect rises through the 1970s peaking in the late 1980s then declining steadily until 2010. From 2010 to 2024, the estimated effect increases modestly and approaches levels comparable to its earlier peak; however, this late-period increase is accompanied by wider confidence intervals, reflecting greater uncertainty in recent years.</p>
+<p>In contrast, IP Momentum displays an approximately linear upward trend over the sample period. Between 1970 and 2024, the marginal effect of IP Momentum on log profitability nearly doubles. At all points in time, the effect remains statistically different from zero, indicating that films associated with stronger IP momentum consistently outperform weaker-IP films within the same release year.</p>
+<p>Taken together, these results suggest a shift in the sources of within-year box-office differentiation, away from actor-driven momentum and toward increasingly dominant IP-based advantages.</p>
+<p>An interesting plot to consider is the difference between these two effects over time:</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Figure 7 plots the estimated difference between the time-varying marginal effects of IP Momentum and Actor Momentum on log profitability. Positive values indicate periods in which IP Momentum has a larger within-year profitability effect than Actor Momentum. The estimated difference crosses below zero only during the early 1980s through the early 1990s, indicating a period in which actor momentum was at least as important as IP momentum in differentiating film profitability. After this period, IP Momentum consistently exhibits a larger marginal effect, increasing steadily through the 2000s before leveling off in the early 2010s. Although uncertainty is relatively wide throughout the sample, the confidence interval excludes zero for much of the period from roughly 2000 to 2015, providing evidence that IP Momentum was the dominant driver of within-year profitability during this era. Overall, the figure indicates that IP Momentum has exerted a larger profitability effect than Actor Momentum since the mid-1990s.</p>
+</section>
+<section id="interpretation-implications" class="level1">
+<h1>Interpretation &amp; Implications</h1>
+<p>Since each production company face finite budgets decisions about how much to allocate to intellectual property versus cast strength are trade-offs. Understanding whether IP strength or cast strength are more strongly associated with excess performance is invaluable when production budgets are in the hundreds of millions. As displayed in the previous section IP Momentum, a metric representing IP effect, has become a stronger predictor of profitability over time.</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Consistent with this shift, the share of top 50 budgeted films associated with an established IP has riven steadily since the early 2000s (Figure 8).</p>
+<p>In the results section we also saw Actor Momentum’s effect on profitability decline after a peak near the turn of 1990.</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>In line with that decline, the Actor Momentum in casts of Top 50 budgeted movies has steadily declined since its peak in 1995 (Figure 9).</p>
+<p>Taken together, these results suggest a shift in the relative importance of intellectual property and cast-related factors among the highest-budgeted films since the mid-1990s. As the association between IP-related momentum and profitability has strengthened over time, the share of top-budgeted releases tied to established IP has also increased, while measures of actor momentum indicate a reduced role for densely stacked casts. Although there is some indication of a modest rebound in actor-related effects in recent years, it remains an open question whether this reflects a persistent change or a temporary fluctuation.</p>
+</section>
+<section id="limitations" class="level1">
+<h1>Limitations</h1>
+<p>This analysis is intended to provide descriptive insight into how actor- and IP-related effects have evolved over time, and several limitations should be kept in mind when interpreting the results.</p>
+<ul>
+<li><p>Scope of IP measurement: IP effects are measured only through prior film releases in a franchise. Intellectual property originating in other media, such as books, television series or video games is not captured. This may understate IP strength for certain titles.</p></li>
+<li><p>Early period data constraints: Data availability before the 1970s is limited, making estimates of actor and IP effects in the early years of our sample less precise</p></li>
+<li><p>Unobserved drivers of profitability: Movie profitability is influenced by many factors not included in the model, such as directors, production companies, release timing, and competition in the box office. Incorporating these elements would require an expansion of scope beyond the goals of this project.</p></li>
+<li><p>Cost and revenue opacity: Publicly available financial data are not reported at a granular level, limiting visibility into marketing expenditures, cast compensation, backend participation, and other contractual arrangements that may affect both budgets and profitability.</p></li>
+</ul>
+<p>Despite these limitations, the framework provides a consistent way to compare the evolving roles of IP and cast factors within the high budget theatrical market.</p>
+</section>
+<section id="conclusion" class="level1">
+<h1>Conclusion</h1>
+<p>At the start of this project, we pointed to a familiar observation: big movies today seem to rely more on intellectual property and less on star-studded casts. Looking across several decades of high-budget releases, the data largely support that intuition. Over time, recent franchise performance has become increasingly associated with profitability, and the share of top-budget films tied to established IP has risen steadily since the early 2000s. Over the same period, short-run actor momentum effects on profitability have declined, and actor momentum within casts has also fallen, indicating that modern ensembles are less densely packed with high-momentum stars than in earlier decades.</p>
+<p>However, this does not spell the end of the movie star or the original movie. The growth of streaming platforms has expanded the space for lower budget original projects, reducing risk for producers while creating new opportunities for actors outside of theatrical blockbusters. At the same time, releasing a large budget film in theaters during this post pandemic landscape remains a high risk endeavor. Relying on established IP is an appealing way to hedge against downside risk.</p>
 </section>
 
 </main>
