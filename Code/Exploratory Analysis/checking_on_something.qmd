@@ -1,0 +1,51 @@
+---
+title: "Checking On Something"
+format: html
+editor: visual
+---
+
+# Loading Data and Libraries
+
+```{r}
+library(qs)
+library(tidyverse)
+library(mgcv)
+library(tvReg)
+library(ggrepel)
+library(ggthemes)
+library(zoo)
+library(gratia)
+```
+
+```{r}
+modeling_data <- qread("D:/Portfolio Projects/moviestar_analysis/Data/Processed_Data/Modeling/Combined/modeling_data.qs")
+movie_df <- modeling_data$movie_level_df
+actor_df <- modeling_data$actor_level_df
+```
+
+```{r}
+movie_df |> 
+  group_by(year) |> 
+  summarise(avg_ip_momentum = mean(ip_power_momentum_prior)) |> 
+  ggplot(aes(x = year, y = avg_ip_momentum)) +
+  geom_line()
+```
+
+```{r}
+movie_df |> 
+  group_by(year) |> 
+  summarise(avg_ip_momentum = mean(ip_power_evergreen_prior)) |> 
+  ggplot(aes(x = year, y = avg_ip_momentum)) +
+  geom_line()
+```
+
+```{r}
+momentum_over_time <- movie_df |> 
+  group_by(year) |> 
+  summarise(avg_ip_momentum = mean(ip_power_momentum_prior))
+```
+
+```{r}
+fit <- lm(avg_ip_momentum ~ year, data = momentum_over_time)
+summary(fit)
+```
