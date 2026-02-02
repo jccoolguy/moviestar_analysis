@@ -316,13 +316,6 @@ year_grid <- tibble(
 ```
 
 ```{r}
-library(gratia)
-
-# Inspect smooth names (important!)
-smooths(tvc_mod)
-```
-
-```{r}
 ip_eff <- smooth_estimates(
   tvc_mod,
   select = "s(year_c):ip_z",

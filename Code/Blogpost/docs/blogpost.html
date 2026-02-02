@@ -214,13 +214,8 @@ ul.task-list li input[type="checkbox"] {
 <h1>Results</h1>
 <p>After model selection we ended up with a model with year, budget, IP Momentum (smoothed over year) and Actor Momentum (smoothed over year) all being statistically significant. IP Momentum and Actor Momentum have statistically significant effects over time. The estimated time varying effects are shown below:</p>
 <div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] "s(year_c):ip_z"    "s(year_c):actor_z"</code></pre>
-</div>
-</div>
-<div class="cell">
 <div class="cell-output-display">
-<p><img src="blogpost_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid" width="672"></p>
+<p><img src="blogpost_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <p>Figure 6 shows the estimated time-varying effects of Actor Momentum and IP Momentum on log profitability conditional on year fixed effects.</p>
@@ -230,7 +225,7 @@ ul.task-list li input[type="checkbox"] {
 <p>A useful comparison is the difference between these two effects over time:</p>
 <div class="cell">
 <div class="cell-output-display">
-<p><img src="blogpost_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid" width="672"></p>
+<p><img src="blogpost_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <p>Figure 7 plots the estimated difference between the time-varying marginal effects of IP Momentum and Actor Momentum on log profitability. Positive values indicate periods in which IP Momentum has a larger within-year profitability effect than Actor Momentum. The estimated difference crosses below zero only during the early 1980s through the early 1990s, indicating a period in which actor momentum was at least as important as IP momentum in differentiating film profitability. After this period, IP Momentum consistently exhibits a larger marginal effect, increasing steadily through the 2000s before leveling off in the early 2010s. Although uncertainty is relatively wide throughout the sample, the confidence interval excludes zero for much of the period from roughly 2000 to 2015, providing evidence that IP Momentum was the dominant driver of within-year profitability during this era. Overall, the figure indicates that IP Momentum has exerted a larger profitability effect than Actor Momentum since the mid-1990s.</p>
@@ -240,14 +235,14 @@ ul.task-list li input[type="checkbox"] {
 <p>Since each production company faces finite budgets, decisions about how much to allocate to intellectual property versus cast strength involve clear trade-offs.. Understanding whether IP strength or cast strength are more strongly associated with excess performance is invaluable when production budgets are in the hundreds of millions. As displayed in the previous section IP Momentum, a metric representing IP effect, has become a stronger predictor of profitability over time.</p>
 <div class="cell">
 <div class="cell-output-display">
-<p><img src="blogpost_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid" width="672"></p>
+<p><img src="blogpost_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <p>Consistent with this shift, the share of top 50 budgeted films associated with an established IP has risen steadily since the early 2000s (Figure 8).</p>
 <p>In the results section we also saw Actor Momentum’s effect on profitability decline after a peak near the turn of 1990.</p>
 <div class="cell">
 <div class="cell-output-display">
-<p><img src="blogpost_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid" width="672"></p>
+<p><img src="blogpost_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <p>In line with that decline, the Actor Momentum in casts of Top 50 budgeted movies has steadily declined since its peak in 1995 (Figure 9).</p>
