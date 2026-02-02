@@ -6,6 +6,9 @@ editor: visual
 echo:   false
 message: false
 warning: false
+project:
+  type: website
+  output-dir: docs
 ---
 
 ```{r}

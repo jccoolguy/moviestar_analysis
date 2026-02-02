@@ -75,7 +75,7 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="data-overview" class="level1">
 <h1>Data Overview</h1>
-<p>The data for this project is sourced from The Movie Database. The sample consists of the 50 highest-budgeted English-language films released each year between 1970 and 2024 that received a full theatrical release.</p>
+<p>The data for this project is sourced from The Movie Database (TMDB). The sample consists of the 50 highest-budgeted English-language films released each year between 1970 and 2024 that received a full theatrical release.</p>
 <p>Focusing on high-budget theatrical films allows the analysis to concentrate on projects where commercial performance is a central objective, while excluding smaller art-house releases that often operate under different success criteria.</p>
 <p>For each film, the dataset includes information on release date, production budget, box office revenue, cast members, and any collection or franchise the film is associated with.</p>
 </section>
@@ -83,7 +83,7 @@ ul.task-list li input[type="checkbox"] {
 <h1>Key Measures</h1>
 <p>Two core challenges in this analysis are defining star power within a cast and separating it from the pull of established franchises. When a movie performs well at the box office, it is not always obvious why. Is the success driven by the lead actor, or is the film benefiting from being part of a popular series with a built-in audience?</p>
 <p>The same ambiguity exists on the downside. When a film underperforms, it is unclear whether that outcome reflects weak audience interest in the cast, poor execution, or simply the limits of a franchise that audiences were never particularly excited about in the first place.</p>
-<p>These challenges make it necessary to construct measures of star power and franchise strength that can assign credit more consistently across both successes and failures. This led me to using a value above replacement approach.</p>
+<p>These challenges make it necessary to construct measures of star power and franchise strength that can assign credit more consistently across both successes and failures. This led to the use of a value above replacement approach.</p>
 <section id="value-above-replacement" class="level4">
 <h4 class="anchored" data-anchor-id="value-above-replacement">Value Above Replacement</h4>
 <p>Value above replacement methods are frequently used in sports and originated in the sabermetric revolution in baseball. The basic idea is that if we can set a baseline of performance and then analyze how much individual components contribute to outcomes above or below that baseline. In baseball, for example, wins above replacement (WAR) separates a player’s value into offensive and defensive contributions.</p>
@@ -101,7 +101,7 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="intellectual-property-power" class="level2">
 <h2 class="anchored" data-anchor-id="intellectual-property-power">Intellectual Property Power</h2>
-<p>An order is needed to consistently assign credit. Allocating performance to Intellectual Property serves two core purposes. For original films we can confidently set this metric to zero and assign credit entirely to the cast. For sequels, expected performance is naturally linked to the success of prior entries.</p>
+<p>A consistent ordering is required to assign credit across films.. Allocating performance to Intellectual Property serves two core purposes. For original films we can confidently set this metric to zero and assign credit entirely to the cast. For sequels, expected performance is naturally linked to the success of prior entries.</p>
 <p>This order is especially important for well-established franchises. For instance, a reboot of Star Wars enters theaters with incredible tailwinds from previous successes. It would be misleading to attribute most of that expected success to the cast. To capture this effect, intellectual property power is measured using two complementary metrics: IP Stock and IP Momentum.</p>
 <section id="ip-stock" class="level3">
 <h3 class="anchored" data-anchor-id="ip-stock">IP Stock</h3>
@@ -138,7 +138,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="actor-stock-and-actor-momentum" class="level3">
 <h3 class="anchored" data-anchor-id="actor-stock-and-actor-momentum">Actor Stock and Actor Momentum</h3>
 <p>Using the same value above replacement framework applied to intellectual property, cast star power has two components, Actor Stock and Actor Momentum. Actor Stock captures the cumulative performance of an actor’s prior films while Actor Momentum emphasizes more recent successes by placing greater weight on newer roles. Both measures are constructed using only information available prior to a film’s release and are calculated after accounting for intellectual property effects, ensuring actor-level contributions are not conflated with franchise strength.</p>
-<p>Actor Momentum is especially helpful for assessing actors who have on and off periods of commercial success which would be harder to pickup through Actor Stock. An example would be Eddie Murphy:</p>
+<p>Actor Momentum is especially useful for assessing actors with intermittent periods of commercial success, which are harder to capture through Actor Stock alone. An example would be Eddie Murphy:</p>
 <div class="cell">
 <div class="cell-output-display">
 <p><img src="blogpost_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid" width="672"></p>
@@ -152,11 +152,11 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="methodology" class="level1">
 <h1>Methodology</h1>
-<p>To examine how the influence of IP and actor-related factors changes over time, we use a generalized additive model (GAM). This approach allows each variable’s effect to vary smoothly with release year, capturing gradual shifts in audience preferences and industry structure without imposing a fixed parametric form. We also center and scale all IP and actor related factors, this allows for direct comparison across effects.</p>
+<p>To examine how the influence of IP and actor related factors changes over time, we use a generalized additive model (GAM). This approach allows each variable’s effect to vary smoothly with release year, capturing gradual shifts in audience preferences and industry structure without imposing a fixed parametric form. All IP and actor related variables are centered and scaled, allowing for their effects to be compared directly.</p>
 </section>
 <section id="results" class="level1">
 <h1>Results</h1>
-<p>After model selection we ended up with a model with year, budget, IP Momentum (smoothed over year) and Actor Momentum (smoothed over year) all being statistically significant. IP Momentum and Actor Momentum have statistically significant effects over time. Let’s see what that looks like:</p>
+<p>After model selection we ended up with a model with year, budget, IP Momentum (smoothed over year) and Actor Momentum (smoothed over year) all being statistically significant. IP Momentum and Actor Momentum have statistically significant effects over time. The estimated time varying effects are shown below:</p>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] "s(year_c):ip_z"    "s(year_c):actor_z"</code></pre>
@@ -171,7 +171,7 @@ ul.task-list li input[type="checkbox"] {
 <p>Actor Momentum exhibits a hump shaped pattern. Its marginal effect rises through the 1970s peaking in the late 1980s then declining steadily until 2010. From 2010 to 2024, the estimated effect increases modestly and approaches levels comparable to its earlier peak; however, this late-period increase is accompanied by wider confidence intervals, reflecting greater uncertainty in recent years.</p>
 <p>In contrast, IP Momentum displays an approximately linear upward trend over the sample period. Between 1970 and 2024, the marginal effect of IP Momentum on log profitability nearly doubles. At all points in time, the effect remains statistically different from zero, indicating that films associated with stronger IP momentum consistently outperform weaker-IP films within the same release year.</p>
 <p>Taken together, these results suggest a shift in the sources of within-year box-office differentiation, away from actor-driven momentum and toward increasingly dominant IP-based advantages.</p>
-<p>An interesting plot to consider is the difference between these two effects over time:</p>
+<p>A useful comparison is the difference between these two effects over time:</p>
 <div class="cell">
 <div class="cell-output-display">
 <p><img src="blogpost_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid" width="672"></p>
@@ -181,13 +181,13 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="interpretation-implications" class="level1">
 <h1>Interpretation &amp; Implications</h1>
-<p>Since each production company face finite budgets decisions about how much to allocate to intellectual property versus cast strength are trade-offs. Understanding whether IP strength or cast strength are more strongly associated with excess performance is invaluable when production budgets are in the hundreds of millions. As displayed in the previous section IP Momentum, a metric representing IP effect, has become a stronger predictor of profitability over time.</p>
+<p>Since each production company faces finite budgets, decisions about how much to allocate to intellectual property versus cast strength involve clear trade-offs.. Understanding whether IP strength or cast strength are more strongly associated with excess performance is invaluable when production budgets are in the hundreds of millions. As displayed in the previous section IP Momentum, a metric representing IP effect, has become a stronger predictor of profitability over time.</p>
 <div class="cell">
 <div class="cell-output-display">
 <p><img src="blogpost_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
-<p>Consistent with this shift, the share of top 50 budgeted films associated with an established IP has riven steadily since the early 2000s (Figure 8).</p>
+<p>Consistent with this shift, the share of top 50 budgeted films associated with an established IP has risen steadily since the early 2000s (Figure 8).</p>
 <p>In the results section we also saw Actor Momentum’s effect on profitability decline after a peak near the turn of 1990.</p>
 <div class="cell">
 <div class="cell-output-display">
@@ -211,7 +211,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="conclusion" class="level1">
 <h1>Conclusion</h1>
 <p>At the start of this project, we pointed to a familiar observation: big movies today seem to rely more on intellectual property and less on star-studded casts. Looking across several decades of high-budget releases, the data largely support that intuition. Over time, recent franchise performance has become increasingly associated with profitability, and the share of top-budget films tied to established IP has risen steadily since the early 2000s. Over the same period, short-run actor momentum effects on profitability have declined, and actor momentum within casts has also fallen, indicating that modern ensembles are less densely packed with high-momentum stars than in earlier decades.</p>
-<p>However, this does not spell the end of the movie star or the original movie. The growth of streaming platforms has expanded the space for lower budget original projects, reducing risk for producers while creating new opportunities for actors outside of theatrical blockbusters. At the same time, releasing a large budget film in theaters during this post pandemic landscape remains a high risk endeavor. Relying on established IP is an appealing way to hedge against downside risk.</p>
+<p>However, this does not spell the end of the movie star or the original movie. The growth of streaming platforms has expanded the space for lower budget original projects, reducing risk for producers while creating new opportunities for actors outside of theatrical blockbusters. At the same time, releasing a large budget film in theaters during this post pandemic landscape remains a high risk endeavor. In this environment, relying on established IP becomes an appealing way to hedge against downside risk.</p>
 </section>
 
 </main>
