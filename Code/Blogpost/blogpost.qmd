@@ -1,5 +1,5 @@
 ---
-title: "How have the effects from IP and Cast on movie profitability changed over time?"
+title: "Have Movie Stars Lost Their Edge? How IP and Cast Effects on Profitability Have Changed Over Time"
 author: Jack Cunningham
 editor: visual
 echo:   false
