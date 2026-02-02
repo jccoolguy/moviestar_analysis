@@ -153,7 +153,7 @@ movie_df |>
 
 ### IP Momentum
 
-IP Momentum, on the other hand, captures the recent performance of a franchise using a decaying sum that places greater weight on more recent entries. This allows the measure to reflect how audience interest builds, or fades, as a series progresses, such as across a trilogy. Let's take a look at *Star Wars* momentum:
+IP Momentum, on the other hand, captures the recent performance of a franchise using a decaying sum that places greater weight on more recent entries. This allows the measure to reflect how audience interest builds, or fades, as a series progresses, such as across a trilogy. Let's take a look at Star Wars momentum:
 
 ```{r}
 eras <- tribble(
