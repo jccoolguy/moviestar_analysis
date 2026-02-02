@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.353">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Jack Cunningham">
+
+<title>Movie Profitability: IP vs Cast - How have the effects from IP and Cast on movie profitability changed over time?</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+
+
+</head>
+
+<body>
+
+<div id="quarto-search-results"></div>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#research-motivation-question" id="toc-research-motivation-question" class="nav-link active" data-scroll-target="#research-motivation-question">Research Motivation &amp; Question</a></li>
+  <li><a href="#data-overview" id="toc-data-overview" class="nav-link" data-scroll-target="#data-overview">Data Overview</a></li>
+  <li><a href="#key-measures" id="toc-key-measures" class="nav-link" data-scroll-target="#key-measures">Key Measures</a>
+  <ul class="collapse">
+  <li><a href="#intellectual-property-power" id="toc-intellectual-property-power" class="nav-link" data-scroll-target="#intellectual-property-power">Intellectual Property Power</a>
+  <ul class="collapse">
+  <li><a href="#ip-stock" id="toc-ip-stock" class="nav-link" data-scroll-target="#ip-stock">IP Stock</a></li>
+  <li><a href="#ip-momentum" id="toc-ip-momentum" class="nav-link" data-scroll-target="#ip-momentum">IP Momentum</a></li>
+  </ul></li>
+  <li><a href="#cast-star-power" id="toc-cast-star-power" class="nav-link" data-scroll-target="#cast-star-power">Cast Star Power</a>
+  <ul class="collapse">
+  <li><a href="#actor-stock-and-actor-momentum" id="toc-actor-stock-and-actor-momentum" class="nav-link" data-scroll-target="#actor-stock-and-actor-momentum">Actor Stock and Actor Momentum</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#methodology" id="toc-methodology" class="nav-link" data-scroll-target="#methodology">Methodology</a></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
+  <li><a href="#interpretation-implications" id="toc-interpretation-implications" class="nav-link" data-scroll-target="#interpretation-implications">Interpretation &amp; Implications</a></li>
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations">Limitations</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">How have the effects from IP and Cast on movie profitability changed over time?</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Jack Cunningham </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<section id="research-motivation-question" class="level1">
+<h1>Research Motivation &amp; Question</h1>
+<p>A common belief among people who follow the box office is that movie stars don’t draw audiences the way they used to. Instead, the biggest hits today tend to be tied to established franchises, benefiting from familiar characters, shared universes, and nostalgia from earlier releases.</p>
+<p>This project looks at whether that belief actually holds up in the data, or whether it’s driven by how easy it is to remember the massive successes of franchises like Marvel or Star Wars.</p>
+<p>In particular, I’m interested in whether star power has actually become less important over time, compared to the pull of established franchises.</p>
+</section>
+<section id="data-overview" class="level1">
+<h1>Data Overview</h1>
+<p>The data for this project is sourced from The Movie Database (TMDB). The sample consists of the 50 highest-budgeted English-language films released each year between 1970 and 2024 that received a full theatrical release.</p>
+<p>Focusing on high-budget theatrical films allows the analysis to concentrate on projects where commercial performance is a central objective, while excluding smaller art-house releases that often operate under different success criteria.</p>
+<p>For each film, the dataset includes information on release date, production budget, box office revenue, cast members, and any collection or franchise the film is associated with.</p>
+</section>
+<section id="key-measures" class="level1">
+<h1>Key Measures</h1>
+<p>Two core challenges in this analysis are defining star power within a cast and separating it from the pull of established franchises. When a movie performs well at the box office, it is not always obvious why. Is the success driven by the lead actor, or is the film benefiting from being part of a popular series with a built-in audience?</p>
+<p>The same ambiguity exists on the downside. When a film underperforms, it is unclear whether that outcome reflects weak audience interest in the cast, poor execution, or simply the limits of a franchise that audiences were never particularly excited about in the first place.</p>
+<p>These challenges make it necessary to construct measures of star power and franchise strength that can assign credit more consistently across both successes and failures. This led to the use of a value above replacement approach.</p>
+<section id="value-above-replacement" class="level4">
+<h4 class="anchored" data-anchor-id="value-above-replacement">Value Above Replacement</h4>
+<p>Value above replacement methods are frequently used in sports and originated in the sabermetric revolution in baseball. The basic idea is that if we can set a baseline of performance and then analyze how much individual components contribute to outcomes above or below that baseline. In baseball, for example, wins above replacement (WAR) separates a player’s value into offensive and defensive contributions.</p>
+<p>I apply this same idea to movie performance by allocating credit between intellectual property and cast.</p>
+<p>First, a baseline model is fit using a film’s budget, genre, and release year to estimate expected profitability, to be consistent we use the generic estimate of revenue minus 2.5 times budget. This allows movies to be compared on a common scale by examining the difference between observed outcomes and what would be expected based on these core characteristics alone.</p>
+<p>Take 1978 for example:</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>As Figure 1 shows, films released in the same year can differ substantially in how much they exceed or fall short of expectations. Some films, such as Halloween, dramatically outperform what would be predicted based on budget and genre alone, while others fall well short.</p>
+<p>The next question is how that excess performance should be attributed between the strength of the underlying intellectual property and the star power of the cast.</p>
+<p>A key principle in this attribution is that only information available prior to a film’s release can be used. For example, an actor like Tom Cruise is not treated as a star in his early roles, but only becomes one after establishing a track record of successful leading performances. Similarly, when evaluating the first entry in a franchise, no information about future sequels is used, ensuring that credit is not assigned based on outcomes that were unknowable at the time.</p>
+</section>
+<section id="intellectual-property-power" class="level2">
+<h2 class="anchored" data-anchor-id="intellectual-property-power">Intellectual Property Power</h2>
+<p>A consistent ordering is required to assign credit across films.. Allocating performance to Intellectual Property serves two core purposes. For original films we can confidently set this metric to zero and assign credit entirely to the cast. For sequels, expected performance is naturally linked to the success of prior entries.</p>
+<p>This order is especially important for well-established franchises. For instance, a reboot of Star Wars enters theaters with incredible tailwinds from previous successes. It would be misleading to attribute most of that expected success to the cast. To capture this effect, intellectual property power is measured using two complementary metrics: IP Stock and IP Momentum.</p>
+<section id="ip-stock" class="level3">
+<h3 class="anchored" data-anchor-id="ip-stock">IP Stock</h3>
+<p>IP Stock captures the accumulated performance of a franchise over time. It is defined as the cumulative sum of residual performance from all prior films within a given franchise. In effect, IP Stock represents the level of audience goodwill a franchise has built up before the release of a new entry.</p>
+<p>Take the Star Wars franchise for instance:</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="ip-momentum" class="level3">
+<h3 class="anchored" data-anchor-id="ip-momentum">IP Momentum</h3>
+<p>IP Momentum, on the other hand, captures the recent performance of a franchise using a decaying sum that places greater weight on more recent entries. This allows the measure to reflect how audience interest builds, or fades, as a series progresses, such as across a trilogy. Let’s take a look at <em>Star Wars</em> momentum:</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Figure 3 shows how IP momentum for the Star Wars franchise evolves over time. Momentum rises sharply during the original trilogy. The prequel trilogy generates a renewed increase in momentum, though growth is muted and levels off after weaker reception to later entries. The sequel trilogy follows a similar pattern. Between the three trilogies momentum tails off, highlighting the short-run and decaying nature of this measure.</p>
+</section>
+</section>
+<section id="cast-star-power" class="level2">
+<h2 class="anchored" data-anchor-id="cast-star-power">Cast Star Power</h2>
+<p>With IP Stock and IP Momentum defined for each film, cast measures of star power can now be constructed. As discussed earlier, it would be inappropriate to attribute excess performance to the cast without first accounting for the contribution of the underlying intellectual property.</p>
+<p>To address this, a new baseline is estimated incorporating IP Stock and IP Momentum prior to a film’s release. Performance relative to this updated baseline reflects variation that cannot be explained by franchise strength alone and thus provides a cleaner foundation for measuring cast star power. Figure 4 illustrates how relative performance for Star Wars films changes once IP effects are taken into account.</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>After accounting for IP Stock and IP Momentum, apparent over performance is substantially reduced for most Star Wars films. The only exception is the original Star Wars release, which now has a larger positive residual than before. This is expected, as the first film did not benefit from any pre-existing franchise strength its breakout success was less anticipated.</p>
+<p>This IP-adjusted baseline provides a cleaner foundation for attributing remaining excess performance to cast-level factors. Credit is allocated across the top five billed actors to reflect prominence in the film, with 40% assigned to the lead actor, 25% to the second-billed actor, and the remaining 35% split evenly across the next three billed roles.</p>
+<section id="actor-stock-and-actor-momentum" class="level3">
+<h3 class="anchored" data-anchor-id="actor-stock-and-actor-momentum">Actor Stock and Actor Momentum</h3>
+<p>Using the same value above replacement framework applied to intellectual property, cast star power has two components, Actor Stock and Actor Momentum. Actor Stock captures the cumulative performance of an actor’s prior films while Actor Momentum emphasizes more recent successes by placing greater weight on newer roles. Both measures are constructed using only information available prior to a film’s release and are calculated after accounting for intellectual property effects, ensuring actor-level contributions are not conflated with franchise strength.</p>
+<p>Actor Momentum is especially useful for assessing actors with intermittent periods of commercial success, which are harder to capture through Actor Stock alone. An example would be Eddie Murphy:</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Eddie Murphy emerged as a superstar in the 80s, driven by a run of highly successful films such as Trading Places and Beverly Hills Cop. In the 1990s, however, his commercial performance became more uneven, with periods of weaker box-office results punctuated by occasional successes. This career arc is a usual illustration of the ups and downs that are commonplace in acting. While Actor Stock reflects the cumulative built in his early 80s peak, Actor Momentum is flexible and able to adapt to downturns demonstrating how these two metrics capture distinct aspects of star power over time.</p>
+<p>After constructing actor-level stock and momentum measures, we collapse these quantities back to the movie level to make them usable alongside film attributes and IP metrics. For each film, actor contributions are combined using the same billing-weight scheme used in attribution: 40% to the lead, 25% to the second-billed actor, and the remaining 35% split evenly across the next three. This produces a single, weighted actor stock value and a single, weighted actor momentum value for each movie, both based exclusively on information available prior to release.</p>
+<p>At this point, every film is characterized by four pre-release explanatory measures, IP Stock, IP Momentum, Actor Stock, and Actor Momentum, allowing all subsequent analysis to proceed at the movie level without revisiting cast-level structure.</p>
+</section>
+</section>
+</section>
+<section id="methodology" class="level1">
+<h1>Methodology</h1>
+<p>To examine how the influence of IP and actor related factors changes over time, we use a generalized additive model (GAM). This approach allows each variable’s effect to vary smoothly with release year, capturing gradual shifts in audience preferences and industry structure without imposing a fixed parametric form. All IP and actor related variables are centered and scaled, allowing for their effects to be compared directly.</p>
+</section>
+<section id="results" class="level1">
+<h1>Results</h1>
+<p>After model selection we ended up with a model with year, budget, IP Momentum (smoothed over year) and Actor Momentum (smoothed over year) all being statistically significant. IP Momentum and Actor Momentum have statistically significant effects over time. The estimated time varying effects are shown below:</p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "s(year_c):ip_z"    "s(year_c):actor_z"</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Figure 6 shows the estimated time-varying effects of Actor Momentum and IP Momentum on log profitability conditional on year fixed effects.</p>
+<p>Actor Momentum exhibits a hump shaped pattern. Its marginal effect rises through the 1970s peaking in the late 1980s then declining steadily until 2010. From 2010 to 2024, the estimated effect increases modestly and approaches levels comparable to its earlier peak; however, this late-period increase is accompanied by wider confidence intervals, reflecting greater uncertainty in recent years.</p>
+<p>In contrast, IP Momentum displays an approximately linear upward trend over the sample period. Between 1970 and 2024, the marginal effect of IP Momentum on log profitability nearly doubles. At all points in time, the effect remains statistically different from zero, indicating that films associated with stronger IP momentum consistently outperform weaker-IP films within the same release year.</p>
+<p>Taken together, these results suggest a shift in the sources of within-year box-office differentiation, away from actor-driven momentum and toward increasingly dominant IP-based advantages.</p>
+<p>A useful comparison is the difference between these two effects over time:</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Figure 7 plots the estimated difference between the time-varying marginal effects of IP Momentum and Actor Momentum on log profitability. Positive values indicate periods in which IP Momentum has a larger within-year profitability effect than Actor Momentum. The estimated difference crosses below zero only during the early 1980s through the early 1990s, indicating a period in which actor momentum was at least as important as IP momentum in differentiating film profitability. After this period, IP Momentum consistently exhibits a larger marginal effect, increasing steadily through the 2000s before leveling off in the early 2010s. Although uncertainty is relatively wide throughout the sample, the confidence interval excludes zero for much of the period from roughly 2000 to 2015, providing evidence that IP Momentum was the dominant driver of within-year profitability during this era. Overall, the figure indicates that IP Momentum has exerted a larger profitability effect than Actor Momentum since the mid-1990s.</p>
+</section>
+<section id="interpretation-implications" class="level1">
+<h1>Interpretation &amp; Implications</h1>
+<p>Since each production company faces finite budgets, decisions about how much to allocate to intellectual property versus cast strength involve clear trade-offs.. Understanding whether IP strength or cast strength are more strongly associated with excess performance is invaluable when production budgets are in the hundreds of millions. As displayed in the previous section IP Momentum, a metric representing IP effect, has become a stronger predictor of profitability over time.</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Consistent with this shift, the share of top 50 budgeted films associated with an established IP has risen steadily since the early 2000s (Figure 8).</p>
+<p>In the results section we also saw Actor Momentum’s effect on profitability decline after a peak near the turn of 1990.</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="blogpost_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>In line with that decline, the Actor Momentum in casts of Top 50 budgeted movies has steadily declined since its peak in 1995 (Figure 9).</p>
+<p>Taken together, these results suggest a shift in the relative importance of intellectual property and cast-related factors among the highest-budgeted films since the mid-1990s. As the association between IP-related momentum and profitability has strengthened over time, the share of top-budgeted releases tied to established IP has also increased, while measures of actor momentum indicate a reduced role for densely stacked casts. Although there is some indication of a modest rebound in actor-related effects in recent years, it remains an open question whether this reflects a persistent change or a temporary fluctuation.</p>
+</section>
+<section id="limitations" class="level1">
+<h1>Limitations</h1>
+<p>This analysis is intended to provide descriptive insight into how actor- and IP-related effects have evolved over time, and several limitations should be kept in mind when interpreting the results.</p>
+<ul>
+<li><p>Scope of IP measurement: IP effects are measured only through prior film releases in a franchise. Intellectual property originating in other media, such as books, television series or video games is not captured. This may understate IP strength for certain titles.</p></li>
+<li><p>Early period data constraints: Data availability before the 1970s is limited, making estimates of actor and IP effects in the early years of our sample less precise</p></li>
+<li><p>Unobserved drivers of profitability: Movie profitability is influenced by many factors not included in the model, such as directors, production companies, release timing, and competition in the box office. Incorporating these elements would require an expansion of scope beyond the goals of this project.</p></li>
+<li><p>Cost and revenue opacity: Publicly available financial data are not reported at a granular level, limiting visibility into marketing expenditures, cast compensation, backend participation, and other contractual arrangements that may affect both budgets and profitability.</p></li>
+</ul>
+<p>Despite these limitations, the framework provides a consistent way to compare the evolving roles of IP and cast factors within the high budget theatrical market.</p>
+</section>
+<section id="conclusion" class="level1">
+<h1>Conclusion</h1>
+<p>At the start of this project, we pointed to a familiar observation: big movies today seem to rely more on intellectual property and less on star-studded casts. Looking across several decades of high-budget releases, the data largely support that intuition. Over time, recent franchise performance has become increasingly associated with profitability, and the share of top-budget films tied to established IP has risen steadily since the early 2000s. Over the same period, short-run actor momentum effects on profitability have declined, and actor momentum within casts has also fallen, indicating that modern ensembles are less densely packed with high-momentum stars than in earlier decades.</p>
+<p>However, this does not spell the end of the movie star or the original movie. The growth of streaming platforms has expanded the space for lower budget original projects, reducing risk for producers while creating new opportunities for actors outside of theatrical blockbusters. At the same time, releasing a large budget film in theaters during this post pandemic landscape remains a high risk endeavor. In this environment, relying on established IP becomes an appealing way to hedge against downside risk.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
