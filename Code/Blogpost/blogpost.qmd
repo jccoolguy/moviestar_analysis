@@ -48,7 +48,7 @@ The same ambiguity exists on the downside. When a film underperforms, it is uncl
 
 These challenges make it necessary to construct measures of star power and franchise strength that can assign credit more consistently across both successes and failures. This led to the use of a value above replacement approach.
 
-#### Value Above Replacement
+## Value Above Replacement
 
 Value above replacement methods are frequently used in sports and originated in the sabermetric revolution in baseball. The basic idea is that if we can set a baseline of performance and then analyze how much individual components contribute to outcomes above or below that baseline. In baseball, for example, wins above replacement (WAR) separates a player's value into offensive and defensive contributions.
 
