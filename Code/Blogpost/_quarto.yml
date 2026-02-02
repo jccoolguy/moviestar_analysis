@@ -1,0 +1,11 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "Movie Profitability: IP vs Cast"
+
+format:
+  html:
+    theme: cosmo
+    toc: true

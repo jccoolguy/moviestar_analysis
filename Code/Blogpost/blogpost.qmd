@@ -1,14 +1,10 @@
 ---
 title: "How have the effects from IP and Cast on movie profitability changed over time?"
 author: Jack Cunningham
-format: html
 editor: visual
 echo:   false
 message: false
 warning: false
-project:
-  type: website
-  output-dir: docs
 ---
 
 ```{r}

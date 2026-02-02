@@ -8,7 +8,7 @@
 
 <meta name="author" content="Jack Cunningham">
 
-<title>How have the effects from IP and Cast on movie profitability changed over time?</title>
+<title>Movie Profitability: IP vs Cast - How have the effects from IP and Cast on movie profitability changed over time?</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -24,24 +24,79 @@ ul.task-list li input[type="checkbox"] {
 </style>
 
 
-<script src="blogpost_files/libs/clipboard/clipboard.min.js"></script>
-<script src="blogpost_files/libs/quarto-html/quarto.js"></script>
-<script src="blogpost_files/libs/quarto-html/popper.min.js"></script>
-<script src="blogpost_files/libs/quarto-html/tippy.umd.min.js"></script>
-<script src="blogpost_files/libs/quarto-html/anchor.min.js"></script>
-<link href="blogpost_files/libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="blogpost_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="blogpost_files/libs/bootstrap/bootstrap.min.js"></script>
-<link href="blogpost_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="blogpost_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
 
 
 </head>
 
-<body class="fullcontent">
+<body>
 
-<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
-
+<div id="quarto-search-results"></div>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#research-motivation-question" id="toc-research-motivation-question" class="nav-link active" data-scroll-target="#research-motivation-question">Research Motivation &amp; Question</a></li>
+  <li><a href="#data-overview" id="toc-data-overview" class="nav-link" data-scroll-target="#data-overview">Data Overview</a></li>
+  <li><a href="#key-measures" id="toc-key-measures" class="nav-link" data-scroll-target="#key-measures">Key Measures</a>
+  <ul class="collapse">
+  <li><a href="#intellectual-property-power" id="toc-intellectual-property-power" class="nav-link" data-scroll-target="#intellectual-property-power">Intellectual Property Power</a>
+  <ul class="collapse">
+  <li><a href="#ip-stock" id="toc-ip-stock" class="nav-link" data-scroll-target="#ip-stock">IP Stock</a></li>
+  <li><a href="#ip-momentum" id="toc-ip-momentum" class="nav-link" data-scroll-target="#ip-momentum">IP Momentum</a></li>
+  </ul></li>
+  <li><a href="#cast-star-power" id="toc-cast-star-power" class="nav-link" data-scroll-target="#cast-star-power">Cast Star Power</a>
+  <ul class="collapse">
+  <li><a href="#actor-stock-and-actor-momentum" id="toc-actor-stock-and-actor-momentum" class="nav-link" data-scroll-target="#actor-stock-and-actor-momentum">Actor Stock and Actor Momentum</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#methodology" id="toc-methodology" class="nav-link" data-scroll-target="#methodology">Methodology</a></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
+  <li><a href="#interpretation-implications" id="toc-interpretation-implications" class="nav-link" data-scroll-target="#interpretation-implications">Interpretation &amp; Implications</a></li>
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations">Limitations</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
@@ -212,10 +267,11 @@ ul.task-list li input[type="checkbox"] {
 <h1>Conclusion</h1>
 <p>At the start of this project, we pointed to a familiar observation: big movies today seem to rely more on intellectual property and less on star-studded casts. Looking across several decades of high-budget releases, the data largely support that intuition. Over time, recent franchise performance has become increasingly associated with profitability, and the share of top-budget films tied to established IP has risen steadily since the early 2000s. Over the same period, short-run actor momentum effects on profitability have declined, and actor momentum within casts has also fallen, indicating that modern ensembles are less densely packed with high-momentum stars than in earlier decades.</p>
 <p>However, this does not spell the end of the movie star or the original movie. The growth of streaming platforms has expanded the space for lower budget original projects, reducing risk for producers while creating new opportunities for actors outside of theatrical blockbusters. At the same time, releasing a large budget film in theaters during this post pandemic landscape remains a high risk endeavor. In this environment, relying on established IP becomes an appealing way to hedge against downside risk.</p>
+
+
 </section>
 
-</main>
-<!-- /main column -->
+</main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
   const toggleBodyColorMode = (bsSheetEl) => {
